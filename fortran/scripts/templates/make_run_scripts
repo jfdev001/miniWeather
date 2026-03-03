@@ -1,0 +1,92 @@
+#!/usr/bin/bash
+set -eu
+default_account=bm1233
+valid_partitions=("shared" "compute")
+default_partition="compute"
+usage=$(cat << EOF
+usage: $0 [-h] EMAIL [PARTITION] [ACCOUNT]
+
+Generates user-specific run scripts for miniweather based on existing templates.
+
+required arguments:
+    EMAIL    The email address to which SLURM status messages are sent.
+
+optional arguments:
+    -h
+    --help     Print a usage message and exit.
+
+    PARTITION  Group of nodes to request (default: ${default_partition}).
+               The following partitions are valid: ${valid_partitions[@]}
+               Only ONE of those can be provided. 
+               If you specify 'shared', then your openmp and/or mpi simulations
+               may not start.
+               See https://docs.dkrz.de/doc/levante/running-jobs/partitions-and-limits.html
+
+    ACCOUNT    DKRZ account identifier for SLURM jobs (default: ${default_account})
+
+examples:
+    $0 -h                                # outputs help information
+    $0 myemail@gmail.com                 # specifies valid email address 
+    $0 myemail@gmail.com compute         # specifies compute partition
+    $0 myemail@gmail.com compute         # specifies compute partition
+    $0 myemail@gmail.com compute bm1233  # specifies account for SLURM jobs
+EOF
+)
+
+# Get script arguments
+email=${1:-"invalid"}
+
+if [[ "${email}" == "-h" || "${email}" == "--help" ]]
+then
+    echo "${usage}"
+    exit 0 
+fi
+
+if [[ "${email}" == "invalid" || ! "${email}" =~ .+"@".+ ]]
+then
+    echo "[ERROR] Invalid EMAIL provided"
+    echo "  Try $0 -h"
+    exit 1 
+fi
+
+partition=${2:-$default_partition}
+
+is_invalid_partition=1
+for valid_partition in ${valid_partitions[@]}
+do
+    if [[ "${partition}" == "${valid_partition}" ]]
+    then
+        is_invalid_partition=0
+        break
+    fi
+done
+
+if [[ ${is_invalid_partition} -eq 1 ]]
+then
+    echo "[ERROR] Invalid PARTITION provided"
+    echo "  Try $0 -h"
+    exit 1 
+fi
+
+account=${3:-$default_account}
+
+# Project directories 
+fortran_scripts_dir="$(dirname $(dirname $(realpath ${BASH_SOURCE[0]})))"
+run_dir="${fortran_scripts_dir}/run"
+templates_dir="${fortran_scripts_dir}/templates"
+
+# Replace fields in templates to generate runnable SLURM scripts
+for f in $(ls "${templates_dir}"/* )
+do
+    if [[ "${f}" == *".template" ]]
+    then
+        basename_f=$(basename $f)
+        run_script="${run_dir}/${partition}_${basename_f/.template/}"
+        sed "s/ACCOUNT/${account}/" "${f}" > "${run_script}"
+        sed -i "s/EMAIL/${email}/" "${run_script}" 
+        sed -i "s/PARTITION/${partition}/" "${run_script}"
+        chmod +x "${run_script}"
+    fi
+done 
+
+echo "[SUCCESS]: See ${run_dir} for generated files"

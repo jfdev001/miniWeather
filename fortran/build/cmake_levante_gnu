@@ -2,10 +2,26 @@
 #
 # @brief Configures, builds, and runs tests for miniWeather on Levante
 #
+# @description At the moment since grid size is based on compile time constants
+# and NOT run time constants, the user has to rebuild miniWeather everytime
+# they wish to re-run the simulation at different resolution.
+#
 set -eu  # `man set` then search set \[ and look at options
+
+# source code directory and build configuration directory
 fortran_project_root="$(dirname $(dirname $(realpath ${BASH_SOURCE[0]})))"
 build_dir="${fortran_project_root}/build"
+
+# output directory for executables
 build_output_dir="${build_dir}/build_output"
+
+# Flag to delete the build output directory... needed sometimes when
+# changing any CMakeLists.txt files
+
+if [[ ${1:-"dummy"} == "delete-build-output-dir" ]]
+then
+    [[ -d "${build_output_dir}" ]] && rm -rf "${build_output_dir}"
+fi
 
 # load dependencies 
 module purge
@@ -23,8 +39,8 @@ cmake \
     -DCMAKE_Fortran_COMPILER=mpif90 \
     -DFFLAGS="-O3 -ffree-line-length-none -I$(pkg-config --variable=includedir pnetcdf)" \
     -DLDFLAGS="$(pkg-config --libs pnetcdf) -Wl,-rpath,${PARALLEL_NETCDF_LIBDIR}" \
-    -DOPENACC_FLAGS="-fopenacc" \
     -DOPENMP_FLAGS="-fopenmp" \
+    -DBUILD_TESTING=ON \
     -DNX=200 \
     -DNZ=100 \
     -DSIM_TIME=1000 \
@@ -34,7 +50,7 @@ cmake \
 cmake --build "${build_output_dir}"
 
 # perform tests 
-export TEST_MPI_COMMAND="mpirun -n 1" # used by check_output.sh
+export TEST_MPI_COMMAND="mpirun -n 1"  # used by check_output.sh
 cp "${build_dir}/check_output.sh" "${build_output_dir}"
 cd "${build_output_dir}"
 ctest 

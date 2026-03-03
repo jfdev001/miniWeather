@@ -1,0 +1,134 @@
+#!/usr/bin/bash
+#SBATCH --account=ACCOUNT 
+#SBATCH --mail-user=EMAIL
+#SBATCH --partition=PARTITION
+
+#SBATCH --mail-type=ALL
+#SBATCH --job-name=PARTITION_miniweather
+#SBATCH --nodes=1
+#SBATCH --output=logs/PARTITION_miniweather.%j.out
+#SBATCH --time=00:00:30
+set -eu
+
+PROCS_PER_NODE=${PROCS_PER_NODE:-1}           # default to single process job
+export OMP_NUM_THREADS=${OMP_NUM_THREADS:-1}  # default to single threaded job
+default_run_flag="--no-run"
+usage=$(cat << EOF
+usage: $0 [-h] MINIWEATHER_EXECUTABLE [--run|--no-run]
+
+Slurm script for running miniweather simulations.
+
+You should execute this script with bash first to verify that the process and
+thread layout is what you expect. Then if it is what you expect, you MUST
+change your current working directory to the 'run' directory and can then call
+sbatch with the --run flag. See examples section of this doc.
+
+IMPORTANT: If you try to execute sbatch outside of the 'run' directory, the job
+WILL fail due to the way paths are derived from the SLURM_SUBMIT_DIR.
+
+required arguments:
+    MINIWEATHER_EXECUTABLE  The name of a miniweather executable (e.g., serial).
+
+optional arguments:
+    -h
+    --help    Print a usage message and exit 
+
+    --run
+    --no-run  Flag to run miniweather (default: ${default_run_flag})
+
+environment variables:
+    PROCS_PER_NODE   The number of processes to use on each node (default: ${PROCS_PER_NODE}).
+    OMP_NUM_THREADS  The number of threads to use in each process (default: ${OMP_NUM_THREADS}).
+
+examples:
+    # Several examples that will NOT run the miniweather simulation
+    bash $0 serial --no-run                                    # serial
+    OMP_NUM_THREADS=4 bash $0 openmp --no-run                  # openmp only
+    PROCS_PER_NODE=16 bash $0 mpi --no-run                     # mpi only
+    PROCS_PER_NODE=128 OMP_NUM_THREADS=4 bash $0 mpi --no-run  # hybrid parallel
+
+    # Several examples that will run the miniweather simulation
+    # ONLY if your current working directory is the 'run' directory
+    sbatch $0 serial --run                                    # serial
+    OMP_NUM_THREADS=4 sbatch $0 openmp --run                  # openmp only
+    PROCS_PER_NODE=16 sbatch $0 mpi --run                     # mpi only
+    PROCS_PER_NODE=128 OMP_NUM_THREADS=4 sbatch $0 mpi --run  # hybrid parallel
+EOF
+)
+
+# Get arguments
+miniweather_executable=${1:-"does_not_exist"}
+
+if [[ "${miniweather_executable}" == "does_not_exist" ]]
+then
+    echo "[ERROR] Missing required argument MINIWEATHER_EXECUTABLE"
+    echo "  Try $0 -h"
+    exit 1 
+fi
+
+if [[ "${miniweather_executable}" == "-h" 
+   || "${miniweather_executable}" == "--help" ]]
+then
+    echo "${usage}"
+    exit 0
+fi
+
+run_flag=${2:-$default_run_flag}
+
+if [[ ! "${run_flag}" == "${default_run_flag}" && ! "${run_flag}" == "--run" ]]
+then
+    echo "[ERROR] Second positional argument must be --run or --no-run"
+    echo "  Got ${run_flag}"
+    echo "  Try $0 -h"
+    exit 1 
+fi
+
+# Validate processes you request do not exceed hardware limits 
+MAX_PROCS_PER_NODE_ON_LEVANTE=128
+if [[ ${PROCS_PER_NODE} -gt ${MAX_PROCS_PER_NODE_ON_LEVANTE} ]]
+then
+    echo "[ERROR] PROCS_PER_NODE cannot exceed ${MAX_PROCS_PER_NODE_ON_LEVANTE}"
+    echo "  Got ${PROCS_PER_NODE}"
+    exit 1 
+fi
+
+# compute number of mpi processes available based on the number of threads
+mpi_procs_pernode=$(( PROCS_PER_NODE * 1 / OMP_NUM_THREADS ))
+
+# guard against case where PROCS_PER_NODE=1 but OMP_NUM_THREADS > 1
+if [[ ${mpi_procs_pernode} -eq 0 ]]
+then
+    mpi_procs_pernode=1
+fi
+
+no_of_nodes=${SLURM_JOB_NUM_NODES:=1}         # default to single node job
+mpi_total_procs=$(( no_of_nodes * mpi_procs_pernode ))
+
+# setup path to miniweather executable
+dir_of_cur_file=$(dirname $(realpath "${BASH_SOURCE[0]}"))
+SLURM_SUBMIT_DIR=${SLURM_SUBMIT_DIR:-$dir_of_cur_file}
+fortran_project_dir="$(dirname $(dirname ${SLURM_SUBMIT_DIR}))"
+build_dir="${fortran_project_dir}/build"
+build_output_dir="${build_dir}/build_output"
+miniweather_executable_path="${build_output_dir}/${miniweather_executable}"
+
+if [[ ! -f "${miniweather_executable_path}" ]]
+then
+    echo "[ERROR] The specified miniweather executable does not exist"
+    echo "  You provided ${miniweather_executable}"
+    echo "  and there is no executable in the build_output_dir with that name."
+    echo "  Double check the executables in ${build_output_dir}"
+    echo "  Also make sure your current working directory is the 'run' dir."
+    exit 1 
+fi
+
+# run miniweather 
+if [[ "${run_flag}" == $default_run_flag ]]
+then
+    echo srun -l --ntasks=${mpi_total_procs} --cpus-per-task=${OMP_NUM_THREADS} "${miniweather_executable_path}"
+else
+    echo "[WARNING] srun only works if launched with sbatch (see examples section of miniweather.run)"
+    echo "[WARNING] If the log file contains output, you can safely ignore this warning"
+    export OMPI_MCA_opal_common_ucx_opal_mem_hooks=1  # stops a comm library warning
+    srun -l --ntasks=${mpi_total_procs} --cpus-per-task=${OMP_NUM_THREADS} "${miniweather_executable_path}"
+fi

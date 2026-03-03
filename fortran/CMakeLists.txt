@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.0)
 project(miniWeather Fortran)
 
 enable_testing()
+option(BUILD_TESTING "Build tests" OFF)
 
 include(utils.cmake)
 
@@ -46,20 +47,28 @@ SET(CMAKE_Fortran_FLAGS "${FFLAGS}")
 ############################################################
 add_executable(serial miniWeather_serial.F90)
 set_target_properties(serial PROPERTIES COMPILE_FLAGS "${EXE_DEFS}")
-
-add_executable(serial_test miniWeather_serial.F90)
-set_target_properties(serial_test PROPERTIES COMPILE_FLAGS "${TEST_DEFS}")
+if(${BUILD_TESTING})
+  add_executable(serial_test miniWeather_serial.F90) 
+  set_target_properties(serial_test PROPERTIES COMPILE_FLAGS "${TEST_DEFS}")
+endif()
 
 if (NOT ("${LDFLAGS}" STREQUAL "") )
   target_link_libraries(serial      "${LDFLAGS}")
-  target_link_libraries(serial_test "${LDFLAGS}")
-endif()
-if (NOT ("${SERIAL_LINK_FLAGS}" STREQUAL "") )
-  target_link_libraries(serial      "${SERIAL_LINK_FLAGS}")
-  target_link_libraries(serial_test "${SERIAL_LINK_FLAGS}")
+  if(${BUILD_TESTING})
+    target_link_libraries(serial_test "${LDFLAGS}")
+  endif()
 endif()
 
-add_test(NAME SERIAL_TEST COMMAND ./check_output.sh ./serial_test ${tol} 4.5e-5 ) 
+if (NOT ("${SERIAL_LINK_FLAGS}" STREQUAL "") )
+  target_link_libraries(serial      "${SERIAL_LINK_FLAGS}")
+  if(${BUILD_TESTING})
+    target_link_libraries(serial_test "${SERIAL_LINK_FLAGS}")
+  endif()
+endif()
+
+if(${BUILD_TESTING})
+    add_test(NAME SERIAL_TEST COMMAND ./check_output.sh ./serial_test ${tol} 4.5e-5 ) 
+endif()
 
 
 ############################################################
@@ -68,19 +77,28 @@ add_test(NAME SERIAL_TEST COMMAND ./check_output.sh ./serial_test ${tol} 4.5e-5 
 add_executable(mpi miniWeather_mpi.F90)
 set_target_properties(mpi PROPERTIES COMPILE_FLAGS "${EXE_DEFS}")
 
-add_executable(mpi_test miniWeather_mpi.F90)
-set_target_properties(mpi_test PROPERTIES COMPILE_FLAGS "${TEST_DEFS}")
+if(${BUILD_TESTING})
+    add_executable(mpi_test miniWeather_mpi.F90)
+    set_target_properties(mpi_test PROPERTIES COMPILE_FLAGS "${TEST_DEFS}")
+endif()
 
 if (NOT ("${LDFLAGS}" STREQUAL "") )
   target_link_libraries(mpi      "${LDFLAGS}")
-  target_link_libraries(mpi_test "${LDFLAGS}")
-endif()
-if (NOT ("${MPI_LINK_FLAGS}" STREQUAL "") )
-  target_link_libraries(mpi      "${MPI_LINK_FLAGS}")
-  target_link_libraries(mpi_test "${MPI_LINK_FLAGS}")
+  if(${BUILD_TESTING})
+    target_link_libraries(mpi_test "${LDFLAGS}")
+  endif()
 endif()
 
-add_test(NAME MPI_TEST COMMAND ./check_output.sh ./mpi_test ${tol} 4.5e-5 ) 
+if (NOT ("${MPI_LINK_FLAGS}" STREQUAL "") )
+  target_link_libraries(mpi      "${MPI_LINK_FLAGS}")
+  if(${BUILD_TESTING})
+    target_link_libraries(mpi_test "${MPI_LINK_FLAGS}")
+  endif()
+endif()
+
+if(${BUILD_TESTING})
+  add_test(NAME MPI_TEST COMMAND ./check_output.sh ./mpi_test ${tol} 4.5e-5 ) 
+endif()
 
 
 ############################################################
@@ -88,47 +106,70 @@ add_test(NAME MPI_TEST COMMAND ./check_output.sh ./mpi_test ${tol} 4.5e-5 )
 ############################################################
 if (NOT ("${OPENMP_FLAGS}" STREQUAL "") )
   add_executable(openmp miniWeather_mpi_openmp.F90)
-  set_target_properties(openmp PROPERTIES COMPILE_FLAGS "${EXE_DEFS} ${OPENMP_FLAGS}")
+  set_target_properties(openmp 
+    PROPERTIES COMPILE_FLAGS "${EXE_DEFS} ${OPENMP_FLAGS}")
 
-  add_executable(openmp_test miniWeather_mpi_openmp.F90)
-  set_target_properties(openmp_test PROPERTIES COMPILE_FLAGS "${TEST_DEFS} ${OPENMP_FLAGS}")
+  if(${BUILD_TESTING})
+    add_executable(openmp_test miniWeather_mpi_openmp.F90)
+    set_target_properties(openmp_test 
+      PROPERTIES COMPILE_FLAGS "${TEST_DEFS} ${OPENMP_FLAGS}")
+  endif()
 
   if (NOT ("${LDFLAGS}" STREQUAL "") )
     target_link_libraries(openmp      "${LDFLAGS}")
-    target_link_libraries(openmp_test "${LDFLAGS}")
+    if(${BUILD_TESTING})
+      target_link_libraries(openmp_test "${LDFLAGS}")
+    endif()
   endif()
+
   if ("${OPENMP_LINK_FLAGS}" STREQUAL "")
     SET(OPENMP_LINK_FLAGS ${OPENMP_FLAGS})
   endif()
-  target_link_libraries(openmp      "${OPENMP_LINK_FLAGS}")
-  target_link_libraries(openmp_test "${OPENMP_LINK_FLAGS}")
 
-  add_test(NAME OPENMP_TEST COMMAND ./check_output.sh ./openmp_test ${tol} 4.5e-5 ) 
+  target_link_libraries(openmp      "${OPENMP_LINK_FLAGS}")
+
+  if(${BUILD_TESTING})
+    target_link_libraries(openmp_test "${OPENMP_LINK_FLAGS}")
+    add_test(NAME OPENMP_TEST COMMAND ./check_output.sh ./openmp_test ${tol} 4.5e-5 ) 
+  endif()
+
 endif()
 
 
 ############################################################
+## NOTE: Commented out since unused
+##
 ## Compile the MPI + OpenACC version
 ############################################################
-if (NOT ("${OPENACC_FLAGS}" STREQUAL "") )
-  add_executable(openacc miniWeather_mpi_openacc.F90)
-  set_target_properties(openacc PROPERTIES COMPILE_FLAGS "${EXE_DEFS} ${OPENACC_FLAGS}")
-
-  add_executable(openacc_test miniWeather_mpi_openacc.F90)
-  set_target_properties(openacc_test PROPERTIES COMPILE_FLAGS "${TEST_DEFS} ${OPENACC_FLAGS}")
-
-  if (NOT ("${LDFLAGS}" STREQUAL "") )
-    target_link_libraries(openacc      "${LDFLAGS}")
-    target_link_libraries(openacc_test "${LDFLAGS}")
-  endif()
-  if ("${OPENACC_LINK_FLAGS}" STREQUAL "")
-    SET(OPENACC_LINK_FLAGS ${OPENACC_FLAGS})
-  endif()
-  target_link_libraries(openacc      "${OPENACC_LINK_FLAGS}")
-  target_link_libraries(openacc_test "${OPENACC_LINK_FLAGS}")
-
-  add_test(NAME OPENACC_TEST COMMAND ./check_output.sh ./openacc_test ${tol} 4.5e-5 ) 
-endif()
+# if (NOT ("${OPENACC_FLAGS}" STREQUAL "") )
+#   add_executable(openacc miniWeather_mpi_openacc.F90)
+#   set_target_properties(openacc PROPERTIES COMPILE_FLAGS "${EXE_DEFS} ${OPENACC_FLAGS}")
+#
+# if(${BUILD_TESTING})
+#     #   add_executable(openacc_test miniWeather_mpi_openacc.F90)
+# endif()
+# if(${BUILD_TESTING})
+#     #   set_target_properties(openacc_test PROPERTIES COMPILE_FLAGS "${TEST_DEFS} ${OPENACC_FLAGS}")
+# endif()
+# #
+# #   if (NOT ("${LDFLAGS}" STREQUAL "") )
+# #     target_link_libraries(openacc      "${LDFLAGS}")
+# if(${BUILD_TESTING})
+#     #     target_link_libraries(openacc_test "${LDFLAGS}")
+# endif()
+# #   endif()
+# #   if ("${OPENACC_LINK_FLAGS}" STREQUAL "")
+# #     SET(OPENACC_LINK_FLAGS ${OPENACC_FLAGS})
+# #   endif()
+# #   target_link_libraries(openacc      "${OPENACC_LINK_FLAGS}")
+# if(${BUILD_TESTING})
+#     #   target_link_libraries(openacc_test "${OPENACC_LINK_FLAGS}")
+# endif()
+# #
+# if(${BUILD_TESTING})
+#     #   add_test(NAME OPENACC_TEST COMMAND ./check_output.sh ./openacc_test ${tol} 4.5e-5 ) 
+# endif()
+# # endif()
 
 
 
@@ -144,96 +185,145 @@ endif()
 #   add_executable(openmp45 miniWeather_mpi_openmp45.F90)
 #   set_target_properties(openmp45 PROPERTIES COMPILE_FLAGS "${EXE_DEFS} ${OPENMP45_FLAGS}")
 #
-#   add_executable(openmp45_test miniWeather_mpi_openmp45.F90)
-#   set_target_properties(openmp45_test PROPERTIES COMPILE_FLAGS "${TEST_DEFS} ${OPENMP45_FLAGS}")
-#
-#   # The XL compiler dumps out non-unique filenames that screw up parallel compilation
-#   # So it must compile the test at a different time than the original executable
-#   if ("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "XL")
-#     add_dependencies(openmp45_test openmp45)
-#   endif()
-#
-#   if (NOT ("${LDFLAGS}" STREQUAL "") )
-#     target_link_libraries(openmp45      "${LDFLAGS}")
-#     target_link_libraries(openmp45_test "${LDFLAGS}")
-#   endif()
-#   if ("${OPENMP45_LINK_FLAGS}" STREQUAL "")
-#     SET(OPENMP45_LINK_FLAGS ${OPENMP45_FLAGS})
-#   endif()
-#   target_link_libraries(openmp45      "${OPENMP45_LINK_FLAGS}")
-#   target_link_libraries(openmp45_test "${OPENMP45_LINK_FLAGS}")
-#
-#   add_test(NAME OPENMP45_TEST COMMAND ./check_output.sh ./openmp45_test ${tol} 4.5e-5 ) 
+# if(${BUILD_TESTING})
+#     #   add_executable(openmp45_test miniWeather_mpi_openmp45.F90)
+# endif()
+# if(${BUILD_TESTING})
+#     #   set_target_properties(openmp45_test PROPERTIES COMPILE_FLAGS "${TEST_DEFS} ${OPENMP45_FLAGS}")
+# endif()
+# #
+# #   # The XL compiler dumps out non-unique filenames that screw up parallel compilation
+# #   # So it must compile the test at a different time than the original executable
+# #   if ("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "XL")
+# if(${BUILD_TESTING})
+#     #     add_dependencies(openmp45_test openmp45)
+# endif()
+# #   endif()
+# #
+# #   if (NOT ("${LDFLAGS}" STREQUAL "") )
+# #     target_link_libraries(openmp45      "${LDFLAGS}")
+# if(${BUILD_TESTING})
+#     #     target_link_libraries(openmp45_test "${LDFLAGS}")
+# endif()
+# #   endif()
+# #   if ("${OPENMP45_LINK_FLAGS}" STREQUAL "")
+# #     SET(OPENMP45_LINK_FLAGS ${OPENMP45_FLAGS})
+# #   endif()
+# #   target_link_libraries(openmp45      "${OPENMP45_LINK_FLAGS}")
+# if(${BUILD_TESTING})
+#     #   target_link_libraries(openmp45_test "${OPENMP45_LINK_FLAGS}")
+# endif()
+# #
+# if(${BUILD_TESTING})
+#     #   add_test(NAME OPENMP45_TEST COMMAND ./check_output.sh ./openmp45_test ${tol} 4.5e-5 ) 
+# endif()
 # endif()
 
 
 
 ############################################################
+## NOTE: Tests at the moment do not run this, you must specify 
+## -DDO_CONCURRENT_FLAGS during cmake configuration if you wish to run these
+##
 ## Compile the MPI + do concurrent version
 ############################################################
 if (NOT ("${DO_CONCURRENT_FLAGS}" STREQUAL "") )
   add_executable(do_concurrent miniWeather_mpi_do_concurrent.F90)
   set_target_properties(do_concurrent PROPERTIES COMPILE_FLAGS "${EXE_DEFS} ${DO_CONCURRENT_FLAGS}")
 
-  add_executable(do_concurrent_test miniWeather_mpi_do_concurrent.F90)
-  set_target_properties(do_concurrent_test PROPERTIES COMPILE_FLAGS "${TEST_DEFS} ${DO_CONCURRENT_FLAGS}")
+if(${BUILD_TESTING})
+      add_executable(do_concurrent_test miniWeather_mpi_do_concurrent.F90)
+endif()
+if(${BUILD_TESTING})
+      set_target_properties(do_concurrent_test PROPERTIES COMPILE_FLAGS "${TEST_DEFS} ${DO_CONCURRENT_FLAGS}")
+endif()
 
   if (NOT ("${LDFLAGS}" STREQUAL "") )
     target_link_libraries(do_concurrent      "${LDFLAGS}")
-    target_link_libraries(do_concurrent_test "${LDFLAGS}")
+if(${BUILD_TESTING})
+        target_link_libraries(do_concurrent_test "${LDFLAGS}")
+endif()
   endif()
   if ("${DO_CONCURRENT_LINK_FLAGS}" STREQUAL "")
     SET(DO_CONCURRENT_LINK_FLAGS ${DO_CONCURRENT_FLAGS})
   endif()
   target_link_libraries(do_concurrent      "${DO_CONCURRENT_LINK_FLAGS}")
-  target_link_libraries(do_concurrent_test "${DO_CONCURRENT_LINK_FLAGS}")
+if(${BUILD_TESTING})
+      target_link_libraries(do_concurrent_test "${DO_CONCURRENT_LINK_FLAGS}")
+endif()
 
-  add_test(NAME DO_CONCURRENT_TEST COMMAND ./check_output.sh ./do_concurrent_test ${tol} 4.5e-5 ) 
+if(${BUILD_TESTING})
+      add_test(NAME DO_CONCURRENT_TEST COMMAND ./check_output.sh ./do_concurrent_test ${tol} 4.5e-5 ) 
+endif()
 endif()
 
 
 
 ############################################################
+## NOTE: Commented out since not necessary 
+##
 ## Compile the serial allocation during runtime version
 ############################################################
-add_executable(allocate_during_runtime exploration/miniWeather_serial_allocate_during_runtime.F90)
-set_target_properties(allocate_during_runtime PROPERTIES COMPILE_FLAGS "${EXE_DEFS}")
-
-add_executable(allocate_during_runtime_test exploration/miniWeather_serial_allocate_during_runtime.F90)
-set_target_properties(allocate_during_runtime_test PROPERTIES COMPILE_FLAGS "${TEST_DEFS}")
-
-if (NOT ("${LDFLAGS}" STREQUAL "") )
-  target_link_libraries(allocate_during_runtime      "${LDFLAGS}")
-  target_link_libraries(allocate_during_runtime_test "${LDFLAGS}")
-endif()
-if (NOT ("${SERIAL_LINK_FLAGS}" STREQUAL "") )
-  target_link_libraries(allocate_during_runtime      "${SERIAL_LINK_FLAGS}")
-  target_link_libraries(allocate_during_runtime_test "${SERIAL_LINK_FLAGS}")
-endif()
-
-add_test(NAME ALLOCATE_DURING_RUNTIME_TEST COMMAND ./check_output.sh ./allocate_during_runtime_test ${tol} 4.5e-5 ) 
+# add_executable(allocate_during_runtime exploration/miniWeather_serial_allocate_during_runtime.F90)
+# set_target_properties(allocate_during_runtime PROPERTIES COMPILE_FLAGS "${EXE_DEFS}")
+#
+# if(${BUILD_TESTING})
+#     # add_executable(allocate_during_runtime_test exploration/miniWeather_serial_allocate_during_runtime.F90)
+# endif()
+# if(${BUILD_TESTING})
+#     # set_target_properties(allocate_during_runtime_test PROPERTIES COMPILE_FLAGS "${TEST_DEFS}")
+# endif()
+# #
+# # if (NOT ("${LDFLAGS}" STREQUAL "") )
+# #   target_link_libraries(allocate_during_runtime      "${LDFLAGS}")
+# if(${BUILD_TESTING})
+#     #   target_link_libraries(allocate_during_runtime_test "${LDFLAGS}")
+# endif()
+# # endif()
+# # if (NOT ("${SERIAL_LINK_FLAGS}" STREQUAL "") )
+# #   target_link_libraries(allocate_during_runtime      "${SERIAL_LINK_FLAGS}")
+# if(${BUILD_TESTING})
+#     #   target_link_libraries(allocate_during_runtime_test "${SERIAL_LINK_FLAGS}")
+# endif()
+# # endif()
+# #
+# if(${BUILD_TESTING})
+#     # add_test(NAME ALLOCATE_DURING_RUNTIME_TEST COMMAND ./check_output.sh ./allocate_during_runtime_test ${tol} 4.5e-5 ) 
+# endif()
 
 
 
 ############################################################
+## NOTE: Commented out since not necessary 
+##
 ## Compile the serial allocation during runtime version
 ############################################################
-add_executable(allocate_and_assumed_shape exploration/miniWeather_serial_allocate_and_assumed_shape.F90)
-set_target_properties(allocate_and_assumed_shape PROPERTIES COMPILE_FLAGS "${EXE_DEFS}")
-
-add_executable(allocate_and_assumed_shape_test exploration/miniWeather_serial_allocate_and_assumed_shape.F90)
-set_target_properties(allocate_and_assumed_shape_test PROPERTIES COMPILE_FLAGS "${TEST_DEFS}")
-
-if (NOT ("${LDFLAGS}" STREQUAL "") )
-  target_link_libraries(allocate_and_assumed_shape      "${LDFLAGS}")
-  target_link_libraries(allocate_and_assumed_shape_test "${LDFLAGS}")
+# add_executable(allocate_and_assumed_shape exploration/miniWeather_serial_allocate_and_assumed_shape.F90)
+# set_target_properties(allocate_and_assumed_shape PROPERTIES COMPILE_FLAGS "${EXE_DEFS}")
+#
+if(${BUILD_TESTING})
+    # add_executable(allocate_and_assumed_shape_test exploration/miniWeather_serial_allocate_and_assumed_shape.F90)
 endif()
-if (NOT ("${SERIAL_LINK_FLAGS}" STREQUAL "") )
-  target_link_libraries(allocate_and_assumed_shape      "${SERIAL_LINK_FLAGS}")
-  target_link_libraries(allocate_and_assumed_shape_test "${SERIAL_LINK_FLAGS}")
+if(${BUILD_TESTING})
+    # set_target_properties(allocate_and_assumed_shape_test PROPERTIES COMPILE_FLAGS "${TEST_DEFS}")
 endif()
-
-add_test(NAME ALLOCATE_AND_ASSUMED_SHAPE_TEST COMMAND ./check_output.sh ./allocate_and_assumed_shape_test ${tol} 4.5e-5 ) 
+#
+# if (NOT ("${LDFLAGS}" STREQUAL "") )
+#   target_link_libraries(allocate_and_assumed_shape      "${LDFLAGS}")
+if(${BUILD_TESTING})
+    #   target_link_libraries(allocate_and_assumed_shape_test "${LDFLAGS}")
+endif()
+# endif()
+# if (NOT ("${SERIAL_LINK_FLAGS}" STREQUAL "") )
+#   target_link_libraries(allocate_and_assumed_shape      "${SERIAL_LINK_FLAGS}")
+if(${BUILD_TESTING})
+    #   target_link_libraries(allocate_and_assumed_shape_test "${SERIAL_LINK_FLAGS}")
+endif()
+# endif()
+#
+if(${BUILD_TESTING})
+    # add_test(NAME ALLOCATE_AND_ASSUMED_SHAPE_TEST COMMAND ./check_output.sh ./allocate_and_assumed_shape_test ${tol} 4.5e-5 ) 
+endif()
 
 
 

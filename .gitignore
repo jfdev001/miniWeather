@@ -1,6 +1,34 @@
 # ignore results of build output
 **/build_output
 
+# ignore slurm run scripts that are user specific 
+**/*.run
+
+# ignore python stuff
+.venv
+**/__pycache__/
+**/*.egg-info
+
+# ignore large data files 
+**/*.grib*
+**/*.grb*
+**/*.nc*
+**/*.netcdf*
+**/*.tar*
+**/*.*zip*
+**/experiments
+
 # ignore ide stuff
 .vscode
-*.swp
+**/*.swp
+**/*.swo
+
+# ignore env stuff
+.envrc
+
+# ignore log files 
+**/*.log
+**/*.out
+**/*.err
+
+tmp/

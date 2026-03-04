@@ -28,7 +28,6 @@ Examples:
     $0 -h                                # outputs help information
     $0 myemail@gmail.com                 # specifies valid email address 
     $0 myemail@gmail.com compute         # specifies compute partition
-    $0 myemail@gmail.com compute         # specifies compute partition
     $0 myemail@gmail.com compute bm1233  # specifies account for SLURM jobs
 EOF
 )

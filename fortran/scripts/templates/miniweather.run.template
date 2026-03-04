@@ -10,7 +10,7 @@
 #SBATCH --time=00:00:30
 set -eu
 
-LOGICAL_CPUS_PER_NODE=${LOGICAL_CPUS_PER_NODE:-1} # default to single process job
+LOGICAL_CPUS_PER_NODE=${LOGICAL_CPUS_PER_NODE:-1} # default to single logical cpu
 export OMP_NUM_THREADS=${OMP_NUM_THREADS:-1}      # default to single threaded job
 default_run_flag="--no-run"
 args="[-h] BUILD_OUTPUT_SUBDIR MINIWEATHER_EXECUTABLE [--run|--no-run]"

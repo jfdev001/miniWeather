@@ -88,4 +88,4 @@ do
     fi
 done 
 
-echo "[SUCCESS]: See ${run_dir} for generated files"
+echo "[SUCCESS] See ${run_dir} for generated files"

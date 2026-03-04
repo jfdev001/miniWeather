@@ -10,8 +10,8 @@
 #SBATCH --time=00:00:30
 set -eu
 
-PROCS_PER_NODE=${PROCS_PER_NODE:-1}           # default to single process job
-export OMP_NUM_THREADS=${OMP_NUM_THREADS:-1}  # default to single threaded job
+LOGICAL_CPUS_PER_NODE=${LOGICAL_CPUS_PER_NODE:-1} # default to single process job
+export OMP_NUM_THREADS=${OMP_NUM_THREADS:-1}      # default to single threaded job
 default_run_flag="--no-run"
 args="[-h] BUILD_OUTPUT_SUBDIR MINIWEATHER_EXECUTABLE [--run|--no-run]"
 usage=$(cat << EOF
@@ -44,22 +44,22 @@ Optional arguments:
     --no-run  Flag to run miniweather (default: ${default_run_flag})
 
 Environment variables:
-    PROCS_PER_NODE   The number of processes to use on each node (default: ${PROCS_PER_NODE}).
+    LOGICAL_CPUS_PER_NODE   The number of processes to use on each node (default: ${LOGICAL_CPUS_PER_NODE}).
     OMP_NUM_THREADS  The number of threads to use in each process (default: ${OMP_NUM_THREADS}).
 
 Examples:
     # Several examples that WILL NOT run the miniweather simulation
     bash $0 test serial_test --no-run                                    # serial
     OMP_NUM_THREADS=4 bash $0 test openmp_test --no-run                  # openmp only
-    PROCS_PER_NODE=16 bash $0 test mpi_test --no-run                     # mpi only
-    PROCS_PER_NODE=128 OMP_NUM_THREADS=4 bash $0 test mpi_test --no-run  # hybrid parallel
+    LOGICAL_CPUS_PER_NODE=16 bash $0 test mpi_test --no-run                     # mpi only
+    LOGICAL_CPUS_PER_NODE=128 OMP_NUM_THREADS=4 bash $0 test mpi_test --no-run  # hybrid parallel
 
     # Several examples that WILL run the miniweather simulation
     # ONLY if your current working directory is the 'run' directory
     sbatch $0 test serial_test --run                                    # serial
     OMP_NUM_THREADS=4 sbatch $0 test openmp_test --run                  # openmp only
-    PROCS_PER_NODE=16 sbatch $0 test mpi_test --run                     # mpi only
-    PROCS_PER_NODE=128 OMP_NUM_THREADS=4 sbatch $0 test mpi_test --run  # hybrid parallel
+    LOGICAL_CPUS_PER_NODE=16 sbatch $0 test mpi_test --run                     # mpi only
+    LOGICAL_CPUS_PER_NODE=128 OMP_NUM_THREADS=4 sbatch $0 test mpi_test --run  # hybrid parallel
 EOF
 )
 
@@ -77,11 +77,6 @@ then
 fi
 
 # validate args
-if (( OMP_NUM_THREADS > PROCS_PER_NODE ))
-then
-    echo "[WARNING] OMP_NUM_THREADS exceeds PROCS_PER_NODE, this made degrade performance due to thread oversubscription"
-fi
-
 function validate_required_arg() {
     local required_arg="${1:-$default_required}"
     if [[ "${required_arg}" == "${default_required}" ]]
@@ -104,18 +99,20 @@ then
 fi
 
 # Validate processes you request do not exceed hardware limits 
-MAX_PROCS_PER_NODE_ON_LEVANTE=128
-if [[ ${PROCS_PER_NODE} -gt ${MAX_PROCS_PER_NODE_ON_LEVANTE} ]]
+MAX_CORES_PER_NODE_ON_LEVANTE=128
+NUM_HYPERTHREADS_PER_CORE=2
+MAX_LOGICAL_CPUS_PER_NODE_ON_LEVANTE=$(( MAX_CORES_PER_NODE_ON_LEVANTE * NUM_HYPERTHREADS_PER_CORE ))
+if [[ ${LOGICAL_CPUS_PER_NODE} -gt ${MAX_LOGICAL_CPUS_PER_NODE_ON_LEVANTE} ]]
 then
-    echo "[ERROR] PROCS_PER_NODE cannot exceed ${MAX_PROCS_PER_NODE_ON_LEVANTE}"
-    echo "  Got ${PROCS_PER_NODE}"
+    echo "[ERROR] LOGICAL_CPUS_PER_NODE cannot exceed ${MAX_LOGICAL_CPUS_PER_NODE_ON_LEVANTE}"
+    echo "  Got ${LOGICAL_CPUS_PER_NODE}"
     exit 1 
 fi
 
 # compute number of mpi processes available based on the number of threads
-mpi_procs_pernode=$(( PROCS_PER_NODE * 1 / OMP_NUM_THREADS ))
+mpi_procs_pernode=$(( LOGICAL_CPUS_PER_NODE * 1 / OMP_NUM_THREADS ))
 
-# guard against case where PROCS_PER_NODE=1 but OMP_NUM_THREADS > 1
+# guard against case where LOGICAL_CPUS_PER_NODE=1 but OMP_NUM_THREADS > 1
 if [[ ${mpi_procs_pernode} -eq 0 ]]
 then
     mpi_procs_pernode=1

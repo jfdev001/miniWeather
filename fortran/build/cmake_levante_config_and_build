@@ -159,3 +159,5 @@ cmake \
 
 # build executables
 cmake --build "${build_output_dir}"
+
+echo "[SUCCESS] miniweather compiled to ${build_output_dir}"

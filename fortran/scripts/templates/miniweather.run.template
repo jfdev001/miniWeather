@@ -48,7 +48,8 @@ Environment variables:
                            (default: ${LOGICAL_CPUS_PER_NODE}). This cannot exceed ${MAX_LOGICAL_CPUS_PER_NODE_ON_LEVANTE} since 
                            that is a hardware limitation of Levante.
 
-    OMP_NUM_THREADS        The number of threads to use in each process (TODO TASK)
+    OMP_NUM_THREADS        The number of threads to use in parallel regions
+                           (i.e., code wrapped with !\$omp parallel [options...])
                            (default: ${OMP_NUM_THREADS}).
 
 Examples:

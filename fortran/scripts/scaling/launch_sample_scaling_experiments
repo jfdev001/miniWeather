@@ -1,0 +1,15 @@
+#!/usr/bin/bash
+#
+# @brief Launch sample scaling experiments... note that the PARTITION_miniweather.run
+# should be pasted also into the desired experimental output directory because
+# output.nc will be written to the same directory in which that run file exists
+#
+#
+# * get the directory info
+# * create an experiments directory
+# * call the config and build based on the desired parameters (name dirs accordingly)
+# * for each of the created dirs copy and paste the compute.run into that dir 
+# and then execute it (could otherwise change the source code ... but probably
+# best to just leave it alone...)
+# * cd into the appropriate dirs in subshells and then launch experiments
+# by sbatching the required files...

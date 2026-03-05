@@ -9,7 +9,7 @@ Usage: $0 [-h] EMAIL [PARTITION] [ACCOUNT]
 Generates user-specific run scripts for miniweather based on existing templates.
 
 Required arguments:
-    EMAIL    The email address to which SLURM status messages are sent.
+    EMAIL    The email address to which Slurm status messages are sent.
 
 Optional arguments:
     -h
@@ -22,13 +22,13 @@ Optional arguments:
                may not start.
                See https://docs.dkrz.de/doc/levante/running-jobs/partitions-and-limits.html
 
-    ACCOUNT    DKRZ account identifier for SLURM jobs (default: ${default_account})
+    ACCOUNT    DKRZ account identifier for Slurm jobs (default: ${default_account})
 
 Examples:
     $0 -h                                # outputs help information
     $0 myemail@gmail.com                 # specifies valid email address 
     $0 myemail@gmail.com compute         # specifies compute partition
-    $0 myemail@gmail.com compute bm1233  # specifies account for SLURM jobs
+    $0 myemail@gmail.com compute bm1233  # specifies account for Slurm jobs
 EOF
 )
 
@@ -44,7 +44,7 @@ fi
 if [[ "${email}" == "invalid" || ! "${email}" =~ .+"@".+ ]]
 then
     echo "[ERROR] Invalid EMAIL provided"
-    echo "  Try $0 -h"
+    echo "  See $0 -h"
     exit 1 
 fi
 
@@ -63,18 +63,19 @@ done
 if [[ ${is_invalid_partition} -eq 1 ]]
 then
     echo "[ERROR] Invalid PARTITION provided"
-    echo "  Try $0 -h"
+    echo "  See $0 -h"
     exit 1 
 fi
 
 account=${3:-$default_account}
 
 # Project directories 
-fortran_scripts_dir="$(dirname $(dirname $(realpath ${BASH_SOURCE[0]})))"
+fortran_project_dir="$(dirname $(dirname $(dirname $(realpath ${BASH_SOURCE[0]}))))"
+fortran_scripts_dir="${fortran_project_dir}/scripts"
 run_dir="${fortran_scripts_dir}/run"
 templates_dir="${fortran_scripts_dir}/templates"
 
-# Replace fields in templates to generate runnable SLURM scripts
+# Replace fields in templates to generate runnable Slurm scripts
 for f in $(ls "${templates_dir}"/* )
 do
     if [[ "${f}" == *".template" ]]
@@ -84,6 +85,7 @@ do
         sed "s/ACCOUNT/${account}/" "${f}" > "${run_script}"
         sed -i "s/EMAIL/${email}/" "${run_script}" 
         sed -i "s/PARTITION/${partition}/" "${run_script}"
+        sed -i "s,FORTRAN_PROJECT_DIR,${fortran_project_dir}," "${run_script}"
         chmod +x "${run_script}"
     fi
 done 

@@ -10,6 +10,9 @@
 #SBATCH --time=00:00:30
 set -eu
 
+MAX_CORES_PER_NODE_ON_LEVANTE=128
+NUM_THREADS_PER_CORE=2
+MAX_LOGICAL_CPUS_PER_NODE_ON_LEVANTE=$(( MAX_CORES_PER_NODE_ON_LEVANTE * NUM_THREADS_PER_CORE ))
 LOGICAL_CPUS_PER_NODE=${LOGICAL_CPUS_PER_NODE:-1} # default to single logical cpu
 export OMP_NUM_THREADS=${OMP_NUM_THREADS:-1}      # default to single threaded job
 default_run_flag="--no-run"
@@ -17,20 +20,17 @@ args="[-h] BUILD_OUTPUT_SUBDIR MINIWEATHER_EXECUTABLE [--run|--no-run]"
 usage=$(cat << EOF
 Usage: 
     bash $0 $args 
-        Run locally (direct execution).
+        Run locally (direct execution). Only usable with --no-run flag.
 
     sbatch $0 $args 
         Submit as a Slurm batch job.
 
 Script for running miniweather simulations.
 
-You should execute this script with bash first to verify that the process and
-thread layout is what you expect. Then if it is what you expect, you MUST
-change your current working directory to the 'run' directory and can then call
-sbatch with the --run flag. See examples section of this doc.
-
-IMPORTANT: If you try to execute sbatch outside of the 'run' directory, the job
-WILL fail due to the way paths are derived from the SLURM_SUBMIT_DIR.
+You should execute this script with bash and the --no-run flag first to verify
+that the process and thread layout is what you expect. Then, if it is what you
+expect, you can execute this script with sbatch and the --run flag. See
+Examples section of this doc.
 
 Required arguments:
     BUILD_OUTPUT_SUBDIR     Name of subdirectory created inside build_output/
@@ -44,22 +44,40 @@ Optional arguments:
     --no-run  Flag to run miniweather (default: ${default_run_flag})
 
 Environment variables:
-    LOGICAL_CPUS_PER_NODE   The number of processes to use on each node (default: ${LOGICAL_CPUS_PER_NODE}).
-    OMP_NUM_THREADS  The number of threads to use in each process (default: ${OMP_NUM_THREADS}).
+    LOGICAL_CPUS_PER_NODE  The number of logical CPUs to allocate on each node 
+                           (default: ${LOGICAL_CPUS_PER_NODE}). This cannot exceed ${MAX_LOGICAL_CPUS_PER_NODE_ON_LEVANTE} since 
+                           that is a hardware limitation of Levante.
+
+    OMP_NUM_THREADS        The number of threads to use in each process (TODO TASK)
+                           (default: ${OMP_NUM_THREADS}).
 
 Examples:
     # Several examples that WILL NOT run the miniweather simulation
-    bash $0 test serial_test --no-run                                    # serial
-    OMP_NUM_THREADS=4 bash $0 test openmp_test --no-run                  # openmp only
+    bash $0 test serial_test --no-run                                           # serial
+    OMP_NUM_THREADS=4 bash $0 test openmp_test --no-run                         # openmp only
     LOGICAL_CPUS_PER_NODE=16 bash $0 test mpi_test --no-run                     # mpi only
     LOGICAL_CPUS_PER_NODE=128 OMP_NUM_THREADS=4 bash $0 test mpi_test --no-run  # hybrid parallel
 
     # Several examples that WILL run the miniweather simulation
-    # ONLY if your current working directory is the 'run' directory
-    sbatch $0 test serial_test --run                                    # serial
-    OMP_NUM_THREADS=4 sbatch $0 test openmp_test --run                  # openmp only
+    sbatch $0 test serial_test --run                                           # serial
+    OMP_NUM_THREADS=4 sbatch $0 test openmp_test --run                         # openmp only
     LOGICAL_CPUS_PER_NODE=16 sbatch $0 test mpi_test --run                     # mpi only
     LOGICAL_CPUS_PER_NODE=128 OMP_NUM_THREADS=4 sbatch $0 test mpi_test --run  # hybrid parallel
+
+Notes:
+    On Levante, Slurm sees that we have a maximum of 256 logical CPUs per
+    compute node (i.e., 128 cores * 2 threads per core). You can verify this
+    with 'lscpu'. The total number of logical CPUs that Slurm will attempt to
+    allocate is the product of the arguments to --ntasks and --cpus-per-task
+    passed to the srun command, which is what this script wraps. The argument
+    to --ntasks is the number of processes you wish to start. You can think of
+    a process as an MPI rank in the miniweather code. The argument to
+    --cpus-per-task is the number of threads you would like each process to
+    have. 
+
+References:
+    [1] [Linux Kernel Definition CPU Topology](https://www.kernel.org/doc/Documentation/devicetree/bindings/cpu/cpu-topology.txt)
+    [2] [DKRZ Levante Node Configuration](https://docs.dkrz.de/doc/levante/configuration.html)
 EOF
 )
 
@@ -82,7 +100,7 @@ function validate_required_arg() {
     if [[ "${required_arg}" == "${default_required}" ]]
     then
         echo "[ERROR] Missing required argument"
-        echo "  Try $0 -h"
+        echo "  See $0 -h"
         exit 1 
     fi
 }
@@ -94,14 +112,20 @@ if [[ ! "${run_flag}" == "${default_run_flag}" && ! "${run_flag}" == "--run" ]]
 then
     echo "[ERROR] Argument must be --run or --no-run"
     echo "  Got ${run_flag}"
-    echo "  Try $0 -h"
+    echo "  See $0 -h"
+    exit 1 
+fi
+
+SLURM_JOB_ID="${SLURM_JOB_ID:-UNDEFINED}"
+if [[ "${SLURM_JOB_ID}" == "UNDEFINED" && "${run_flag}" == "--run" ]]
+then
+    echo "[ERROR] --run is not allowed when launching script with bash"
+    echo "  Use bash and --no-run to inspect the call to srun"
+    echo "  See $0 -h"
     exit 1 
 fi
 
 # Validate processes you request do not exceed hardware limits 
-MAX_CORES_PER_NODE_ON_LEVANTE=128
-NUM_THREADS_PER_CORE=2
-MAX_LOGICAL_CPUS_PER_NODE_ON_LEVANTE=$(( MAX_CORES_PER_NODE_ON_LEVANTE * NUM_THREADS_PER_CORE ))
 if [[ ${LOGICAL_CPUS_PER_NODE} -gt ${MAX_LOGICAL_CPUS_PER_NODE_ON_LEVANTE} ]]
 then
     echo "[ERROR] LOGICAL_CPUS_PER_NODE cannot exceed ${MAX_LOGICAL_CPUS_PER_NODE_ON_LEVANTE}"
@@ -122,9 +146,7 @@ no_of_nodes=${SLURM_JOB_NUM_NODES:=1}         # default to single node job
 mpi_total_procs=$(( no_of_nodes * mpi_procs_pernode ))
 
 # setup path to miniweather executable
-dir_of_cur_file=$(dirname $(realpath "${BASH_SOURCE[0]}"))
-SLURM_SUBMIT_DIR=${SLURM_SUBMIT_DIR:-$dir_of_cur_file}
-fortran_project_dir="$(dirname $(dirname ${SLURM_SUBMIT_DIR}))"
+fortran_project_dir="FORTRAN_PROJECT_DIR"
 build_dir="${fortran_project_dir}/build"
 build_output_dir="${build_dir}/build_output/${build_output_subdir_basename}"
 miniweather_executable_path="${build_output_dir}/${miniweather_executable}"
@@ -135,17 +157,15 @@ then
     echo "  You provided ${miniweather_executable}"
     echo "  and there is no executable in the build_output_dir with that name."
     echo "  Double check the executables in ${build_output_dir}"
-    echo "  Also make sure your current working directory is the 'run' dir."
     exit 1 
 fi
 
 # run miniweather 
 if [[ "${run_flag}" == $default_run_flag ]]
 then
+    echo "[WARNING] Not running batch job. Inspect output below to verify you understand the intended requested resources."
     echo srun -l --ntasks=${mpi_total_procs} --cpus-per-task=${OMP_NUM_THREADS} "${miniweather_executable_path}"
 else
-    echo "[WARNING] srun only works if launched with sbatch (see examples section of miniweather.run)"
-    echo "[WARNING] If the log file contains output, you can safely ignore this warning"
     export OMPI_MCA_opal_common_ucx_opal_mem_hooks=1  # stops a comm library warning
     srun -l --ntasks=${mpi_total_procs} --cpus-per-task=${OMP_NUM_THREADS} "${miniweather_executable_path}"
 fi

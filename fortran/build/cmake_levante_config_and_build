@@ -58,7 +58,7 @@ function validate_required_arg() {
     if [[ "${required_arg}" == "${default_required}" ]]
     then
         echo "[ERROR] Missing required argument"
-        echo "  Try $0 -h"
+        echo "  See $0 -h"
         exit 1 
     fi
 }
@@ -71,7 +71,7 @@ function validate_int_arg() {
     then
         echo "[ERROR] Any integer arguments must be greater than 1"
         echo "  Got ${int_arg}"
-        echo "  Try $0 -h"
+        echo "  See $0 -h"
         exit 1 
     fi
 
@@ -79,7 +79,7 @@ function validate_int_arg() {
     then
         echo "[ERROR] Argument is not an integer"
         echo "  Got ${int_arg}"
-        echo "  Try $0 -h"
+        echo "  See $0 -h"
         exit 1 
     fi
 }
@@ -92,7 +92,7 @@ function validate_bool_arg() {
     then
         echo "[ERROR] Bool arg must be either ON or OFF"
         echo "  Got ${bool_arg}"
-        echo "  Try $0 -h"
+        echo "  See $0 -h"
         exit 1 
     fi 
 }
@@ -114,7 +114,7 @@ if [[ "${build_output_subdir_basename}" == *"/"* ]]
 then
     echo "[ERROR] BUILD_OUTPUT_SUBDIR should be a basename, not a full path"
     echo "  Got ${build_output_subdir_basename}"
-    echo "  Try $0 -h"
+    echo "  See $0 -h"
     exit 1 
 fi
 

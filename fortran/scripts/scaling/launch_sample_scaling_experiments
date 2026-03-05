@@ -1,15 +1,145 @@
 #!/usr/bin/bash
-#
-# @brief Launch sample scaling experiments... note that the PARTITION_miniweather.run
-# should be pasted also into the desired experimental output directory because
-# output.nc will be written to the same directory in which that run file exists
-#
-#
-# * get the directory info
-# * create an experiments directory
-# * call the config and build based on the desired parameters (name dirs accordingly)
-# * for each of the created dirs copy and paste the compute.run into that dir 
-# and then execute it (could otherwise change the source code ... but probably
-# best to just leave it alone...)
-# * cd into the appropriate dirs in subshells and then launch experiments
-# by sbatching the required files...
+# NOTE: The student could modify this script for their own experiments... mpi,
+# openacc, hybrid openmp/mpi...
+set -eu
+fortran_project_dir="$(dirname $(dirname $(dirname $(realpath ${BASH_SOURCE[0]}))))"
+default_run_flag="--no-run"
+usage=$(cat << EOF
+Usage:
+    $0 [-h] RUN_SCRIPT [--run|--no-run]
+
+Script to demonstrate scaling properties of openmp miniweather.
+
+Required arguments:
+    RUN_SCRIPT       The name of the run script (e.g., compute_miniweather.run)
+
+Optional arguments:
+    --run
+    --no-run  Flag to run scaling experiment (default: ${default_run_flag})
+
+Examples:
+    $0 compute_miniweather.run --no-run
+EOF
+)
+
+# get args 
+default_required="REQUIRED"
+run_script="${1:-$default_required}"
+run_flag="${2:-$default_run_flag}"
+
+if [[ "${run_script}" == "-h" || "${run_script}" == "--help" ]]
+then
+    echo "${usage}"
+    exit 0 
+fi
+
+# validate args
+function validate_required_arg() {
+    local required_arg="${1:-$default_required}"
+    if [[ "${required_arg}" == "${default_required}" ]]
+    then
+        echo "[ERROR] Missing required argument"
+        echo "  See $0 -h"
+        exit 1 
+    fi
+}
+
+validate_required_arg "${run_script}"
+
+if [[ ! "${run_flag}" == "${default_run_flag}" && ! "${run_flag}" == "--run" ]]
+then
+    echo "[ERROR] Argument must be --run or --no-run"
+    echo "  Got ${run_flag}"
+    echo "  See $0 -h"
+    exit 1 
+fi
+
+# Get directories 
+build_dir="${fortran_project_dir}/build"
+build_output_dir="${build_dir}/build_output"
+run_dir="${fortran_project_dir}/scripts/run"
+
+run_script_path="${run_dir}/${run_script}"
+if [[ ! -f "${run_script_path}" ]]
+then
+    echo "[ERROR] run script doesn't exist"
+    echo "  You provided ${run_script}"
+    echo "  This expands automatically to ${run_script_path}"
+    echo "  Double check your RUN_SCRIPT name and make sure it is in the ${run_dir} directory"
+    echo "  See $0 -h"
+    exit 1 
+fi
+
+# Generate simulation parameter sets
+nxs=(128 256)
+nzs=(128 256)
+sim_time=100
+out_freq="${sim_time}" # outputs only two frames, once at beginning and once at end
+
+params_set=()
+for nx in ${nxs[@]}
+do
+    for nz in ${nzs[@]}
+    do
+        # generate unique subdirectory for this simulation set 
+        subdir="nx_${nx}_nz_${nz}_sim_time_${sim_time}_out_freq_${out_freq}"
+
+        # order of these arguments corresponds to 
+        # `cmake_levante_config_and_build` order
+        params="${nx} ${nz} ${sim_time} ${out_freq} ${subdir}"
+        params_set+=("${params}")
+    done
+done
+
+# iterate through params and compile miniweather
+n_params_sets="${#params_set[@]}"
+cnt=0
+for params in "${params_set[@]}"
+do
+    # all compilation commands are parallel 
+    "${build_dir}/cmake_levante_config_and_build" ${params} &
+done 
+wait 
+echo "[SUCCESS] All miniweather parameter sets compiled."
+
+# run experiemnts with different number of threads
+nthreads=(1 2 4)
+subdir_ix=4
+miniweather_executable="openmp"
+for nthread in ${nthreads[@]}
+do
+    for params in "${params_set[@]}"
+    do
+        # extract the subdir from the parameters set
+        params_arr=($params)
+        subdir="${params_arr[$subdir_ix]}"
+        subdir_full_path="${build_output_dir}/${subdir}"
+
+        # create an experiment directory based on that subdir and type of 
+        # resource you are varying (e.g., in this case varing nthreads)
+        nthread_experiments_dir="${subdir_full_path}/output_nthread_${nthread}"
+        if [[ ! -d "${nthread_experiments_dir}" ]]
+        then
+            mkdir "${nthread_experiments_dir}"
+        else
+            echo "[WARNING] ${nthread_experiments_dir} already exists and its output will be overwritten."
+        fi
+
+        # execute the simulation with the desired parameters
+        if [[ "${run_flag}" == "${default_run_flag}" ]]
+        then
+            # dry run
+            OMP_NUM_THREADS=${nthread} bash "${run_script_path}" "${subdir}" "${miniweather_executable}" --no-run
+        else
+            # NOTE: --chdir is important here because simulation outputs are written
+            # to where the directory that Slurm changes to
+            OMP_NUM_THREADS=${nthread} sbatch --chdir "${nthread_experiments_dir}" "${run_script_path}" "${subdir}" "${miniweather_executable}" --run
+            echo "[NOTE] Check ${nthread_experiments_dir} for simulation outputs"
+        fi
+    done
+done
+
+if [[ "${run_flag}" == "--run" ]]
+then
+    echo "[SUCCESS] All simulations submitted to Slurm scheduler"
+fi

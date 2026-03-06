@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
 from collections import namedtuple
+from glob import glob
 from os import listdir
 from os.path import join, realpath, basename, getmtime
 from pathlib import Path
-from re import findall
+from re import findall, search
 from typing import NamedTuple
 
 # import matplotlib.pyplot as plt
@@ -33,18 +34,18 @@ def main():
     )
     sim_params_set: list[SimParams] = []
     for subdir in experiment_subdirs:
-        find_sim_params: list[tuple[str]] = findall(
+        match_sim_params: list[tuple[str]] = findall(
             subdir_name_regex, subdir)
-        assert len(find_sim_params) == 1, "must find only one match"
+        assert len(match_sim_params) == 1, "must find only one match"
         sim_params: SimParams = SimParams(
-            *tuple(map(lambda p: int(p), find_sim_params[0])))
+            *tuple(map(lambda p: int(p), match_sim_params[0])))
         sim_params_set.append(sim_params)
 
     # extract measurements from output directories and build object holding
     # experiment simulation parameters and measurements
     # NOTE: You could adapt this to your measurements
-    Measure = namedtuple(
-        "Measure", (
+    Measurement = namedtuple(
+        "Measurement", (
             "nthreads",
             "cpu_time"
         )
@@ -52,7 +53,7 @@ def main():
     Experiment = namedtuple(
         "Experiment", (
             "sim_params",
-            "measures"
+            "results"
         )
     )
 
@@ -62,22 +63,22 @@ def main():
 
         experimental_output_dirs = [
             join(subdir, d) for d in listdir(subdir) if "output_" in d]
-        measures: list[Measure] = []
+        results: list[Measurement] = []
 
         for experimental_output_dir in experimental_output_dirs:
             experimental_output_dir_basename = basename(
                 experimental_output_dir)
-            find_nthreads = findall(
+            match_nthreads = findall(
                 experimental_output_dir_regex,
                 experimental_output_dir_basename)
-            assert len(find_nthreads) == 1, "must find only one match"
-            nthreads = int(find_nthreads[0])
+            assert len(match_nthreads) == 1, "must find only one match"
+            nthreads = int(match_nthreads[0])
             log_files = get_mtime_sorted_log_files(experimental_output_dir)
             most_recent_log_file = log_files[-1]
             cpu_time = get_cpu_time(most_recent_log_file)
-            measure = Measure(nthreads, cpu_time)
-            measures.append(measure)
-        experiment = Experiment(sim_params, measures)
+            measurement = Measurement(nthreads, cpu_time)
+            results.append(measurement)
+        experiment = Experiment(sim_params, results)
         print(experiment)
         print()
         experiments.append(experiment)
@@ -89,13 +90,21 @@ def main():
 
 
 def get_mtime_sorted_log_files(experimental_output_dir: str) -> list[str]:
-    log_files: list[str] = ["dummy"]
-
-    return log_files
+    log_files: list[str] = glob(
+        join(experimental_output_dir, "**", "*.out"), recursive=True)
+    sorted_log_files: list[str] = sorted(log_files, key=lambda f: getmtime(f))
+    return sorted_log_files
 
 
 def get_cpu_time(log_file: str) -> float:
-    cpu_time: float = 0.0
+    cpu_time: float
+    cpu_time_regex = r"CPU Time:\s*([0-9.]+)"
+    with open(log_file, "r") as f:
+        for line in f:
+            match = search(cpu_time_regex, line)
+            if match:
+                cpu_time = float(match.group(1))
+                break  # stop after first match
     return cpu_time
 
 

@@ -120,10 +120,11 @@ https://github.com/jfdev001/miniWeather
 
 and star it so that you can easily find it later.
 
-If you prefer, you can fork that project and then clone your own fork of
-`miniweather`. This is also a good approach since then you can upload (i.e.,
-`git push`) your code to a repository on your GitHub. The workflow would look
-something like the following
+If you prefer, you can fork (see [github docs: fork a
+repo](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo))
+that repo and then clone your own fork of `miniweather`. This is also a good
+approach since then you can upload (i.e., `git push`) your code to a repository
+on your GitHub. The workflow would look something like the following
 
 ```shell
 cd /work/bm1233/${USER}  
@@ -336,10 +337,10 @@ You can use that script as a template for running your own experiments.
 ## Visualizing Performance Results
 
 This will also depend heavily on the types of experiments that you wish to run,
-however, an example python code is provided at:
+however, an example python code that can be launched by:
 
 ```shell
-scripts/viz/sample_scaling_results.py
+python scripts/viz/sample_scaling_results.py
 ```
 
 That script has no `-h` option supported; however, at the top of the file

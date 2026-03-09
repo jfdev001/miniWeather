@@ -1,6 +1,7 @@
 # The MiniWeather Mini App
 
 A mini app simulating weather-like flows for training in parallelizing accelerated HPC architectures. Currently includes:
+
 * MPI (C, Fortran, and C++)
 * OpenACC Offload (C and Fortran)
 * OpenMP Threading (C and Fortran)
@@ -10,12 +11,11 @@ A mini app simulating weather-like flows for training in parallelizing accelerat
   * https://github.com/mrnorman/YAKL/wiki/CPlusPlus-Performance-Portability-For-OpenACC-and-OpenMP-Folks
   * C++ code works on CPU, Nvidia GPUs (CUDA), and AMD GPUs (HIP)
 
-Author: Matt Norman, Oak Ridge National Laboratory, https://mrnorman.github.io
+Original Author: Matt Norman, Oak Ridge National Laboratory,
+https://mrnorman.github.io
 
-Contributors:
-* Matt Norman (ORNL)
-* Jeff Larkin (Nvidia)
-* Isaac Lyngaas (ORNL)
+Author for DKRZ Levante: Jared Frazier, Leibniz Institute of Atmospheric
+Physics, https://jfdev001.github.io/
 
 # Table of Contents
 
@@ -103,89 +103,129 @@ Once the time tendency is computed, the fluid PDEs are essentially now cast as a
 * For C++ portability, Nvidia's CUB and AMD's hipCUB and rocPRIM are already included as submodules
 * CMake: https://cmake.org
 
-On Ubuntu, the pnetcdf, ncview, mpi, and cmake dependencies can be installed  with:
-```bash
-sudo apt-get install cmake libopenmpi-dev libpnetcdf-dev ncview
-```
-
 ## Basic Setup
 
-```bash
-git clone git@github.com:mrnorman/miniWeather.git
+```shell
+cd /work/bm1233/${USER}  
+git clone git@github.com:jfdev001/miniWeather.git 
 cd miniWeather
 git submodule update --init --recursive
 ```
 
+Alternatively, you can fork the project at 
+
+```text
+https://github.com/jfdev001/miniWeather
+```
+
+and then clone your own fork of miniweather if you prefer. This is also a good
+approach since then you can upload (i.e., `git push`) your code to a repository
+on your GitHub. The workflow would look something like the following
+
+```shell
+cd /work/bm1233/${USER}  
+# assuming you have forked miniweather
+git clone git@github.com:YOUR_GITHUB_USER_NAME_HERE/miniWeather.git 
+cd miniWeather
+git submodule update --init --recursive
+
+# by default, the remote origin (i.e., source of your code on GitHub
+# and its destination when pushing) is set to 
+# git@github.com:YOUR_GITHUB_USER_NAME_HERE/miniWeather.git ...
+# by adding another remote and calling it upstream, you can at any
+# time inspect or pull the code provided by jfdev001 without breaking
+# you local changes 
+git remote add upstream git@github.com:jfdev001/miniWeather.git 
+git fetch upstream  # allows you to pull code from jfdev001 in the future
+```
+
 ## Directories and Compiling
 
-There are four main directories in the mini app: (1) a Fortran source directory; (2) a C source directory; (3) a C++ source directory; and (4) a documentation directory. The C code is technically C++ code but only because I wanted to use the ampersand pass by reference notation rather than the hideous C asterisks.
+There are four main directories in the mini app: (1) a Fortran source
+directory; (2) a C source directory; (3) a C++ source directory; and (4) a
+documentation directory. 
 
-`miniWeather` uses the [CMake](https://cmake.org/) build system, so you'll need to have `cmake` installed. Look at the `fortran/build/cmake_summit_[compiler].sh`, `c/build/cmake_summit_[compiler].sh`, and `cpp/build/cmake_summit_[compiler].sh` scripts for examples of how to run the `cmake` configuration in Fortran, C, and C++, respectively.
+`miniWeather` uses the [CMake](https://cmake.org/) build system. While the
+focus of this course is the code in the `fortran` directory, you may
+look at the `c` and `cpp` directories if you wish to find build scripts matching
+different HPC systems and compiler setups. Those build scripts in the `c`
+and `cpp` directories will *not* work on Levante and will have to be modified
+if you wish to run those codes.
 
 ## Building and Testing Workflow
 
-Note that you must source the cmake scripts in the `build/` directores because they do module loading and set a `TEST_MPI_COMMAND` environment variable because it will differ from machine to machine.
+Note that you must source the cmake scripts in the `build/` directores because
+they do module loading and set a `TEST_MPI_COMMAND` environment variable
+because it will differ from machine to machine.
 
-```bash
-cd miniWeather/[language]/build
-source cmake_[machine]_[compiler].sh
-make
-make test
+The first thing you should do is verify that you can compile and run
+`miniweather`:
+
+```shell
+cd miniWeather/fortran/build
+source cmake_levante_test # or bash cmake_levante_test or ./cmake_levante_test
 ```
 
-To run the code after confirming the tests pass, you can launch the executable of your choice with `mpirun -n [# tasks] ./executable_name` on most machines.
+This generates a directory called `build_output/test` where all configuration
+(e.g., auto-generated Makefiles) and compilation artifacts (e.g., executable
+binaries like `serial`, `openmp`, and `mpi`).
 
-On Summit, it gets more complicated, unfortunately. You need to deal with so-called ``resource sets''. The following are single-node options:
+You should *always* read the usage documentation for any script you run. For nearly
+every script provided, you can do the following to get usage documentation
 
-* MPI-only: `jsrun -n 6 -a 7 -c 7 ./executable_name`
-* MPI + GPU: `jsrun -n 6 -a 1 -c 1 -g 1 ./executable_name`
+```shell
+# assuming you're in the directory of the script...
+# also if you encounter permissions issues, call `chmod +x <script_name>`
+./<script_name> -h
+```
 
-For more nodes on Summit, just multiply the `-n` parameter by the number of nodes.
+You can check to see what `cmake_levante_test` by typing
 
-**Summit**: On OLCF's Summit computer (and several other computers), you need to have an allocation loaded in order to run the code. You cannot run the code on the login nodes because the code is compiled for `spectrum-mpi`, which will give a segmentation fault unless you run the executable with `jsrun`. It's easiest to grab an interactive allocation on one node for two hours. Each Summit node has six GPUs and 42 CPU cores.
+```shell
+./cmake_levante_test -h
+```
 
-Also, on Summit, it's best to clone the entire repo in `/gpfs` space because the unit tests require writing files, which can only be done in GPFS space.
+Note that the `cmake_levante_test` simply wraps the
+`cmake_levante_config_and_build` script discussed in the following sections.
+
+In the real world, there may be limited or *no* documentation for software that
+you are using. Even worse, they're may be documentation but it could be *out of
+date*. This is almost worse than having no documentation because you might
+think the software is doing one thing while it is in reality doing something
+completely unexpected. You need to be prepared to *read* through code to
+determine what it does. When doing this, keep mind the following:
+
+* What are the inputs to the code? 
+    * Does it take positional arguments? Does it take flags? 
+    * Does it have optional arguments? What are the defaults of those optional
+    arguments? 
+    * Does it read from a file?
+    * What assumptions (if any) about paths (e.g., directories) does the code
+    make?
+* What are the outputs of the code?
+    * Does it write to standard output (i.e., the terminal)?
+    * Does it produce large files (e.g., netcdf)? Where do those files get 
+    written?
+* Does the script launch Slurm jobs or execute locally?
+
+Some of these notes may not be clear to you yet, but keep them in mind.
 
 ### Compiler Considerations
 
-To use OpenACC and OpenMP offloading, look at the `miniWeather/[c | fortran]/cmake_summit_gnu.sh` files for guidance in terms of compiler options. Also, you need to use GNU version 8.1 or higher for OpenACC and OpenMP offloading to work. PGI should compile OpenACC fine with any reasonably modern version, and the same is true for IBM XL with OpenMP offload.
-
-### C and Fortran
-
-To compile the code, first edit the `Makefile` and change the flags to point to your parallel-netcdf installation as well as change the flags based on which compiler you are using. There are five versions of the code in C and Fortran: serial, mpi, mpi+openmp, and mpi+openacc, mpi+openmp4.5. The filenames make it clear which file is associated with which programming paradigm.
-
-It's best to run the `cmake` configure from the `build` directories. For PGI, to enable OpenACC, and OpenMP, you'll need to specify:
-
-```bash
-cmake ... -DOPENACC_FLAGS="-ta=nvidia,cc??" # cc?? is, e.g. cc35, cc50, cc70, etc.
-                                            # It depends on what GPU you're using
-          -DOPENMP_FLAGS="-mp"
-```
-
-For GNU, to enable OpenACC, OpenMP, and OpenMP offload, you'll need to specify:
-
-```bash
-cmake ... -DOPENACC_FLAGS="-fopenacc"
-          -DOPENMP45_FLAGS="-fopenmp"
-          -DOPENMP_FLAGS="-fopenmp"
-```
-
-For IBM XL, to enable OpenMP and OpenMP offload, you'll need to specify:
-
-```bash
-cmake ... -DOPENMP45_FLAGS="-qsmp=omp -qoffload"
-          -DOPENMP_FLAGS="-qsmp=omp"
-```
-
-After the `cmake` configure, type `make -j` to build the code, and type `make test` to run the tests. The executables are named `serial`, `mpi`, `openmp`, `openmp45`, and `openacc`.
-
-### C++
-
-For the C++ code, there are three configurations: serial, mpi, and mpi+`parallel_for`. The latter uses a C++ kernel-launching approach, which is essentially CUDA with greater portability for multiple backends. This code also uses `cmake`, and you can use the summit scripts as examples. 
-
 ## Altering the Code's Configurations
 
-To alter the configuration of the code, you can control the number of cells in the x- and z-directions, the length of simulation time, the output frequency, and the initial data to use by passing the following variables to the CMake configuration:
+To alter the configuration of the code, you can control the number of cells in
+the x- and z-directions, the length of simulation time, the output frequency,
+and the initial data to use by calling `./cmake_levante_build_and_configure`,
+see 
+
+```shell
+./cmake_levante_build_and_configure -h
+```
+
+This script forwards these arguments to two calls to `cmake` that configure and
+build the script. The generated `cmake` configuration might look like
+the below:
 
 * `-DNX=400`: Uses 400 cells in the x-direction
 * `-DNZ=200`: Uses 200 cells in the z-direction
@@ -193,21 +233,52 @@ To alter the configuration of the code, you can control the number of cells in t
 * `-DOUT_FREQ=10`: Outputs every 10 seconds model time
 * `-DDATA_SPEC=DATA_SPEC_THERMAL`: Initializes a rising thermal
 
-It's best if you keep `NX` exactly twice the value of `NZ` since the domain is 20km x 10km. 
+It's best if you keep `NX` exactly twice the value of `NZ` since the domain is
+20km x 10km. 
 
-The data specifications are `DATA_SPEC_COLLISION`, `DATA_SPEC_THERMAL`, `DATA_SPEC_MOUNTAIN`, `DATA_SPEC_DENSITY_CURRENT`, and `DATA_SPEC_INJECTION`, and each are described later on.
+The data specifications are `DATA_SPEC_COLLISION`, `DATA_SPEC_THERMAL`,
+`DATA_SPEC_MOUNTAIN`, `DATA_SPEC_DENSITY_CURRENT`, and `DATA_SPEC_INJECTION`,
+and each are described later on.
 
 ## Running the Code
 
-To run the code, simply call:
+It is recommended to run the `build_output/test/serial` code first to get
+an idea for the model outputs. Note that a file `output.nc` is always produced 
+in the diretory from which you call the `miniweather` executables.
 
+As an example:
+
+```shell
+# assuming in fortran/ directory... this produces `output.nc` there
+./build/build_output/test/serial_test
 ```
-mpirun -n [# ranks] ./[parallel_id]
+
+Since parameters are set in the code itself, you don't need to pass any
+parameters to the executables.
+
+This is fine for testing lightweight serial codes; however, we are interested
+in parallel codes. Since you are using a compute cluster shared by man people,
+jobs requiring more computational resources must be submitted to the Slurm
+scheduler.
+
+We provide a script that wraps the generation of a run script which you can
+use later for running simulations. You can check out the parameters for this
+script here:
+
+```shell
+./scripts/templates/make_run_scripts -h
 ```
 
-where `[parallel_id]` is `serial`, `mpi`, `openmp`, `openacc`, `openmp45`, or `parallelfor`. You'll notice some `[parallel_id]_test` executables as well. These use fixed values for `nx`, `nz`, `sim_time`, `out_freq`, and `data_spec` for unit testing whereas the `[parallel_id]` executables use the values you specified to CMake through the `-D` definitions.
+This script can be used to generate Slurm scripts specific to your user that
+can be used to run `miniweather` simulations. These scripts are, by convention,
+written to `scripts/run` and are *not* tracked by `git`. If you wish to modify
+the `.gitignore` file and remove the line containing `*.run`, `git` will not
+track your generated run scripts. The run scripts will also be prefixed
+with the partition that you have requested. Different partitions on levante
+(e.g., shared, compute, gpu) give the user differ compute resources. By default
+the compute partition is used, and this will work with MPI and OpenMP jobs.
 
-Since parameters are set in the code itself, you don't need to pass any parameters. Some machines use different tools instead of mpirun (e.g., OLCF's Summit uses `jsrun`).
+
 
 ## Viewing the Output
 

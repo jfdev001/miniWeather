@@ -178,6 +178,7 @@ cmake \
     -DFFLAGS="-O3 -ffree-line-length-none -I$(pkg-config --variable=includedir pnetcdf)" \
     -DLDFLAGS="$(pkg-config --libs pnetcdf) -Wl,-rpath,${PARALLEL_NETCDF_LIBDIR}" \
     -DOPENMP_FLAGS="-fopenmp" \
+    -DOPENACC_FLAGS="-fopenacc" \
     -DBUILD_TESTING="${build_testing}" \
     -DNX="${nx}" \
     -DNZ="${nz}" \

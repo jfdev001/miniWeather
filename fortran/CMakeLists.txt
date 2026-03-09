@@ -136,3 +136,25 @@ if (NOT ("${OPENMP_FLAGS}" STREQUAL "") )
 endif()
 
 
+############################################################
+## Compile the MPI + OpenACC version
+############################################################
+if (NOT ("${OPENACC_FLAGS}" STREQUAL "") )
+  add_executable(openacc miniWeather_mpi_openacc.F90)
+  set_target_properties(openacc PROPERTIES COMPILE_FLAGS "${EXE_DEFS} ${OPENACC_FLAGS}")
+
+  add_executable(openacc_test miniWeather_mpi_openacc.F90)
+  set_target_properties(openacc_test PROPERTIES COMPILE_FLAGS "${TEST_DEFS} ${OPENACC_FLAGS}")
+
+  if (NOT ("${LDFLAGS}" STREQUAL "") )
+    target_link_libraries(openacc      "${LDFLAGS}")
+    target_link_libraries(openacc_test "${LDFLAGS}")
+  endif()
+  if ("${OPENACC_LINK_FLAGS}" STREQUAL "")
+    SET(OPENACC_LINK_FLAGS ${OPENACC_FLAGS})
+  endif()
+  target_link_libraries(openacc      "${OPENACC_LINK_FLAGS}")
+  target_link_libraries(openacc_test "${OPENACC_LINK_FLAGS}")
+
+  add_test(NAME OPENACC_TEST COMMAND ./check_output.sh ./openacc_test ${tol} 4.5e-5 ) 
+endif()

@@ -170,14 +170,25 @@ This generates a directory called `build_output/test` where all configuration
 (e.g., auto-generated Makefiles) and compilation artifacts (e.g., executable
 binaries like `serial`, `openmp`, and `mpi`).
 
-You should *always* read the usage documentation for any script you run. For nearly
-every script provided, you can do the following to get usage documentation
+You should *always* read the usage documentation for any script you run. For
+nearly every script provided, you can do the following to get usage
+documentation
 
 ```shell
 # assuming you're in the directory of the script...
 # also if you encounter permissions issues, call `chmod +x <script_name>`
 ./<script_name> -h
 ```
+
+Pay close attention also to any examples section in usage documentation.
+
+If you are using MobaXTerm you should have two ssh sessions open and connected
+to Levante: (1) one just for looking at the uage documentation of scripts so
+that you know what the inputs and outputs are, and (2) one for actually
+launching scripts and/or editing files. If you are Linux or Mac, you can also
+launch multiple terminals and each of them can independently ssh to Levante.
+Levante also comes with `tmux` (terminal multiplexer) by default, so you could
+use that instead if you're already familiar.
 
 You can check to see what `cmake_levante_test` by typing
 
@@ -202,13 +213,13 @@ determine what it does. When doing this, keep mind the following:
     * Does it read from a file?
     * What assumptions (if any) about paths (e.g., directories) does the code
     make?
+
 * What are the outputs of the code?
     * Does it write to standard output (i.e., the terminal)?
     * Does it produce large files (e.g., netcdf)? Where do those files get 
     written?
-* Does the script launch Slurm jobs or execute locally?
 
-Some of these notes may not be clear to you yet, but keep them in mind.
+* Does the script launch Slurm jobs or execute locally?
 
 ### Compiler Considerations
 
@@ -220,12 +231,12 @@ and the initial data to use by calling `./cmake_levante_build_and_configure`,
 see 
 
 ```shell
+# assuming in build/ dir
 ./cmake_levante_build_and_configure -h
 ```
 
-This script forwards these arguments to two calls to `cmake` that configure and
-build the script. The generated `cmake` configuration might look like
-the below:
+This script forwards arguments to two calls to `cmake` that configure and build
+the script. The generated `cmake` configuration call might look like the below:
 
 * `-DNX=400`: Uses 400 cells in the x-direction
 * `-DNZ=200`: Uses 200 cells in the z-direction
@@ -242,9 +253,9 @@ and each are described later on.
 
 ## Running the Code
 
-It is recommended to run the `build_output/test/serial` code first to get
+It is recommended to run the `build_output/test/serial_test` code first to get
 an idea for the model outputs. Note that a file `output.nc` is always produced 
-in the diretory from which you call the `miniweather` executables.
+in the directory from which you call the `miniweather` executables.
 
 As an example:
 
@@ -257,7 +268,7 @@ Since parameters are set in the code itself, you don't need to pass any
 parameters to the executables.
 
 This is fine for testing lightweight serial codes; however, we are interested
-in parallel codes. Since you are using a compute cluster shared by man people,
+in parallel codes. Since you are using a compute cluster shared by many people,
 jobs requiring more computational resources must be submitted to the Slurm
 scheduler.
 
@@ -269,16 +280,70 @@ script here:
 ./scripts/templates/make_run_scripts -h
 ```
 
-This script can be used to generate Slurm scripts specific to your user that
-can be used to run `miniweather` simulations. These scripts are, by convention,
-written to `scripts/run` and are *not* tracked by `git`. If you wish to modify
-the `.gitignore` file and remove the line containing `*.run`, `git` will not
-track your generated run scripts. The run scripts will also be prefixed
-with the partition that you have requested. Different partitions on levante
-(e.g., shared, compute, gpu) give the user differ compute resources. By default
-the compute partition is used, and this will work with MPI and OpenMP jobs.
+This script can be used to generate Slurm scripts specific to your user for
+running `miniweather` simulations. These scripts are, by convention, written to
+`scripts/run` and are *not* tracked by `git`. If you wish to modify the
+`.gitignore` file and remove the line containing `*.run`, `git` will not track
+your generated run scripts. The run scripts will also be prefixed with the
+partition that you have requested. Different partitions on levante (e.g.,
+shared, compute, gpu) give the user differ compute resources. By default the
+compute partition is used, and this will work with MPI and OpenMP jobs.
 
+You should generate an example run script with the following:
 
+```shell
+EMAIL_HERE="put_your_email@gmail.com"
+./scripts/templates/make_run_scripts ${EMAIL_HERE}
+```
+
+This generates `scripts/run/compute_miniweather.run`. You should inspect what
+this script does with
+
+```shell
+scripts/run/compute_miniweather.run -h
+```
+
+In particular, you should run each of the `bash` examples in the usage doc to
+get an understanding of what *would* be submitted to Slurm. There are lots of
+outputs so make sure to read and understand them. When ready to submit jobs to
+Slurm, look at the `sbatch` examples in the same usage doc.
+
+Note that the `time` sbatch directive is set to 30 seconds. This is sufficient
+for running tests, but may not be sufficient for running larger scale
+simulations. If your simulation significantly exceeds the amount of time
+allocated by the `time` directive, the simulation will timeout and you the
+outputs to `output.nc` may be incomplete. Be aware that increasing the amount
+of time you would like to run your job may result in you waiting longer for
+the Slurm scheduler to actually launch your job. You should always prototype
+any experiments or scripts that you write which involve Slurm such that they
+request a very short amount of time (i.e., less than 1 minute).
+
+## Running Performance Experiments
+
+You may want to evaluate how the performance of `miniweather` is affected by
+increasing the number of threads, increasing the number of MPI processes, or
+doing a combination of both. You can inspect a sample bash script that prepares
+and launches such experiments:
+
+```shell
+./scripts/scaling/launch_sample_scaling_experiments -h
+```
+
+You can use that script as a template for running your own experiments.
+
+## Visualizing Performance Results
+
+This will also depend heavily on the types of experiments that you wish to run,
+however, an example python code is provided at:
+
+```shell
+scripts/viz/sample_scaling_results.py
+```
+
+That script has no `-h` option supported; however, at the top of the file
+is a small description of the contents of the script itself and what it's for.
+
+You copy/modify it to accomplish your plotting goals for your experiments.
 
 ## Viewing the Output
 

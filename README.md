@@ -347,6 +347,11 @@ is a small description of the contents of the script itself and what it's for.
 
 You copy/modify it to accomplish your plotting goals for your experiments.
 
+Below is an example output from the script:
+
+<img width="999" height="799" alt="miniweather_openmp" src="https://github.com/user-attachments/assets/5f2959bf-393a-4ae2-8008-67383dffcc01" />
+
+
 ## Viewing the Output
 
 The file I/O is done in the netCDF format: (https://www.unidata.ucar.edu/software/netcdf). To me, the easiest way to view the data is to use a tool called “ncview” (http://meteora.ucsd.edu/~pierce/ncview_home_page.html). To use it, you can simply type `ncview output.nc`, making sure you have X-forwarding enabled in your ssh session. Further, you can call `ncview -frames output.nc`, and it will dump out all of your frames in the native resolution you're viewing the data in, and you you can render a movie with tools like `ffmpeg`. 

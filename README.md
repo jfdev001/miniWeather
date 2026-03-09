@@ -112,15 +112,18 @@ cd miniWeather
 git submodule update --init --recursive
 ```
 
-Alternatively, you can fork the project at 
+To find that repository on GitHub, go to  
 
 ```text
 https://github.com/jfdev001/miniWeather
 ```
 
-and then clone your own fork of miniweather if you prefer. This is also a good
-approach since then you can upload (i.e., `git push`) your code to a repository
-on your GitHub. The workflow would look something like the following
+and star it so that you can easily find it later.
+
+If you prefer, you can fork that project and then clone your own fork of
+`miniweather`. This is also a good approach since then you can upload (i.e.,
+`git push`) your code to a repository on your GitHub. The workflow would look
+something like the following
 
 ```shell
 cd /work/bm1233/${USER}  

@@ -224,7 +224,6 @@ determine what it does. When doing this, keep mind the following:
 
 * Does the script launch Slurm jobs or execute locally?
 
-### Compiler Considerations
 
 ## Altering the Code's Configurations
 

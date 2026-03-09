@@ -229,7 +229,7 @@ determine what it does. When doing this, keep mind the following:
 
 To alter the configuration of the code, you can control the number of cells in
 the x- and z-directions, the length of simulation time, the output frequency,
-and the initial data to use by calling `./cmake_levante_build_and_configure`,
+and the initial data to use by calling `cmake_levante_build_and_configure`,
 see 
 
 ```shell

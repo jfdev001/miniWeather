@@ -1,5 +1,5 @@
 # The MiniWeather Mini App
-
+Edit more
 A mini app simulating fluid-dynamic flows for training in parallelizing accelerated HPC architectures. Currently includes:
 
 * MPI (C, Fortran, and C++)

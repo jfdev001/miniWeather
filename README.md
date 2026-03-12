@@ -50,7 +50,7 @@ Physics, https://jfdev001.github.io/
 
 
 # Introduction
-There are four main directories in MiniWeather: (1) a Fortran source directory; (2) a C source directory; (3) a C++ source directory; and (4) a documentation directory. We here focus on Fortran, but also provide information for optional exploration.
+There are four main directories in MiniWeather: (1) a Fortran source directory; (2) a C source directory; (3) a C++ source directory; and (4) a documentation directory. We here focus on Fortran, but also provide information for optional exploration with C and C++.
 
 ## Fluid State Variables
 

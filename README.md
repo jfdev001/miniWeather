@@ -12,43 +12,6 @@ https://mrnorman.github.io
 Author for DKRZ Levante: Jared Frazier, Leibniz Institute of Atmospheric
 Physics, https://jfdev001.github.io/
 
-# Table of Contents
-
-- [Introduction](#introduction)
-  * [Brief Description of the Code](#brief-description-of-the-code)
-- [Compiling and Running the Code](#compiling-and-running-the-code)
-  * [Software Dependencies](#software-dependencies)
-  * [Basic Setup](#basic-setup)
-  * [Directories and Compiling](#directories-and-compiling)
-  * [Building and Testing Workflow](#building-and-testing-workflow)
-  * [Altering the Code's Configurations](#altering-the-codes-configurations)
-  * [Running the Code](#running-the-code)
-  * [Viewing the Output](#viewing-the-output)
-- [Parallelization](#parallelization)
-  * [Indexing](#indexing)
-  * **[MPI Domain Decomposition](#mpi-domain-decomposition)**
-  * **[OpenMP CPU Threading](#openmp-cpu-threading)**
-  * **[OpenACC Accelerator Threading](#openacc-accelerator-threading)**
-  * **[C++ Performance Portability](#c-performance-portability)**
-- [Numerical Experiments](#numerical-experiments)
-  * [Rising Thermal](#rising-thermal)
-  * [Colliding Thermals](#colliding-thermals)
-  * [Mountain Gravity Waves](#mountain-gravity-waves)
-  * [Density Current](#density-current)
-  * [Injection](#injection)
-- [Physics, PDEs, and Numerical Approximations](#physics--pdes--and-numerical-approximations)
-  * [The 2-D Euler Equations](#the-2-d-euler-equations)
-  * [Maintaining Hydrostatic Balance](#maintaining-hydrostatic-balance)
-  * [Dimensional Splitting](#dimensional-splitting)
-  * [Finite-Volume Spatial Discretization](#finite-volume-spatial-discretization)
-  * [Runge-Kutta Time Integration](#runge-kutta-time-integration)
-  * [Hyper-viscosity](#hyper-viscosity)
-- [MiniWeather Model Scaling Details](#miniweather-model-scaling-details)
-- [Checking for Correctness](#checking-for-correctness)
-- [Further Resources](#further-resources)
-- [Common Problems](#common-problems)
-
-
 # Introduction
 There are four main directories in MiniWeather: (1) a Fortran source directory; (2) a C source directory; (3) a C++ source directory; and (4) a documentation directory. We focus on MPI and Open MP in Fortran code, but you can find information on C and C++ and on OpenACC here: https://github.com/mrnorman/miniWeather
 

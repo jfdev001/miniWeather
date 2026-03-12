@@ -50,8 +50,7 @@ Physics, https://jfdev001.github.io/
 
 
 # Introduction
-
-The code is decomposed in two spatial dimensions, x and z, with `nx_glob` and `nz_glob` cells in the global domain and nx and nz cells in the local domain, using straightforward domain decomposition for MPI-level parallelization. The global domain is of size xlen and zlen meters, and hs “halo” cells are appended to both sides of each dimension.
+There are four main directories in MiniWeather: (1) a Fortran source directory; (2) a C source directory; (3) a C++ source directory; and (4) a documentation directory. We here focus on Fortran, but also provide information for optional exploration.
 
 ## Fluid State Variables
 
@@ -65,6 +64,100 @@ There are four main arrays used in this code: `state`, `state_tmp`, `flux`, and 
 * `state_tmp`: This is a temporary copy of the fluid state used in the Runge-Kutta integration to keep from overwriting the state at the beginning of the time step, and it has the same units and meaning.
 * `flux`: This is fluid state at cell boundaries in the x- and z-directions, and the units and meanings are the same as for `state` and `state_tmp`. In the x-direction update, the values of `flux` at indices `i` and `i+1` represents the fluid state at the left- and right-hand boundaries of cell `i`. The indexing is analogous in the z-direction. The fluxes are used to exchange fluid properties with neighboring cells.
 * `tend`: This is the time tendency of the fluid state <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\partial\mathbf{q}/\partial&space;t" title="\large \partial\mathbf{q}/\partial t" />, where <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\mathbf{q}" title="\large \mathbf{q}" /> is the the state vector, and as the name suggests, it has the same meaning and units as state, except per unit time (appending <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\text{s}^{-1}" title="\large \text{s}^{-1}" /> to the units). In the Finite-Volume method, the time tendency of a cell is equivalent to the divergence of the flux across a cell.
+
+# Numerical Experiments
+
+A number of numerical experiments are in the code for you to play around with. You can set these by changing the `data_spec_int` variable. 
+
+## Rising Thermal
+
+```
+data_spec_int = DATA_SPEC_THERMAL
+sim_time = 1000
+```
+
+This simulates a rising thermal in a neutral atmosphere, which will look something like a “mushroom” cloud (without all of the violence).
+
+Potential Temperature after 500 seconds:
+
+<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/thermal_pt_0500.png" width=400/>
+
+Potential Temperature after 1,000 seconds:
+
+<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/thermal_pt_1000.png" width=400/>
+
+## Colliding Thermals
+
+```
+data_spec_int = DATA_SPEC_COLLISION
+sim_time = 700
+```
+
+This is similar to the rising thermal test case except with a cold bubble at the model top colliding with a warm bubble at the model bottom to produce some cool looking eddies.
+
+Potential Temperature after 200 seconds:
+
+<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/collision_pt_0200.png" width=400/>
+
+Potential Temperature after 400 seconds:
+
+<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/collision_pt_0400.png" width=400/>
+
+Potential Temperature after 700 seconds:
+
+<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/collision_pt_0700.png" width=400/>
+
+## Mountain Gravity Waves
+
+```
+data_spec_int = DATA_SPEC_MOUNTAIN
+sim_time = 1500
+```
+
+This test cases passes a horizontal wind over a faked mountain at the model bottom in a stable atmosphere to generate a train of stationary gravity waves across the model domain.
+
+Potential Temperature after 400 seconds:
+
+<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/mountain_pt_0400.png" width=400/>
+
+Potential Temperature after 1,300 seconds:
+
+<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/mountain_pt_1300.png" width=400/>
+
+## Density Current
+
+```
+data_spec_int = DATA_SPEC_DENSITY_CURRENT
+sim_time = 600
+```
+
+This test case creates a neutrally stratified atmosphere with a strong cold bubble in the middle of the domain that crashes into the ground to give the feel of a weather front (more of a downburst, I suppose).
+
+Potential Temperature after 200 seconds:
+
+<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/density_current_pt_0200.png" width=400/>
+
+Potential Temperature after 600 seconds:
+
+<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/density_current_pt_0600.png" width=400/>
+
+## Injection
+
+```
+data_spec_int = DATA_SPEC_INJECTION
+sim_time = 1200
+```
+
+A narrow jet of fast and slightly cold wind is injected into a balanced, neutral atmosphere at rest from the left domain near the model top. This has nothing to do with atmospheric flows. It's just here for looks. 
+
+Potential Temperature after 300 seconds:
+
+<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/injection_pt_0300.png" width=400/>
+
+Potential Temperature after 1,000 seconds:
+
+<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/injection_pt_1000.png" width=400/>
+
 
 # Compiling and Running the Code
 
@@ -299,43 +392,13 @@ the Slurm scheduler to actually launch your job. You should always prototype
 any experiments or scripts that you write which involve Slurm such that they
 request a very short amount of time (i.e., less than 1 minute).
 
-## Running Performance Experiments
-
-You may want to evaluate how the performance of `miniweather` is affected by
-increasing the number of threads, increasing the number of MPI processes, or
-doing a combination of both. You can inspect a sample bash script that prepares
-and launches such experiments:
-
-```shell
-./scripts/scaling/launch_sample_scaling_experiments -h
-```
-
-You can use that script as a template for running your own experiments.
-
-## Visualizing Performance Results
-
-This will also depend heavily on the types of experiments that you wish to run,
-however, an example python code that can be launched by:
-
-```shell
-python scripts/viz/sample_scaling_results.py
-```
-
-That script has no `-h` option supported; however, at the top of the file
-is a small description of the contents of the script itself and what it's for.
-
-You copy/modify it to accomplish your plotting goals for your experiments.
-
-Below is an example output from the script:
-
-<img width="999" height="799" alt="miniweather_openmp" src="https://github.com/user-attachments/assets/5f2959bf-393a-4ae2-8008-67383dffcc01" />
-
-
 ## Viewing the Output
 
 The file I/O is done in the netCDF format: (https://www.unidata.ucar.edu/software/netcdf). To me, the easiest way to view the data is to use a tool called “ncview” (http://meteora.ucsd.edu/~pierce/ncview_home_page.html). To use it, you can simply type `ncview output.nc`, making sure you have X-forwarding enabled in your ssh session. Further, you can call `ncview -frames output.nc`, and it will dump out all of your frames in the native resolution you're viewing the data in, and you you can render a movie with tools like `ffmpeg`. 
 
 # Parallelization
+
+The code is decomposed in two spatial dimensions, x and z, with `nx_glob` and `nz_glob` cells in the global domain and nx and nz cells in the local domain, using straightforward domain decomposition for MPI-level parallelization. The global domain is of size xlen and zlen meters, and hs “halo” cells are appended to both sides of each dimension.
 
 This code was designed to parallelize with MPI first and then OpenMP, OpenACC, OpenMP offload, or `parallel_for` next, but you can always parallelize with OpenMP or OpenACC without MPI if you want. But it is rewarding to be able to run it on multiple nodes at higher resolution for more and sharper eddies in the dynamics.
 
@@ -565,100 +628,8 @@ sendbuf_l.deep_copy_to(sendbuf_l_cpu);
 
 A deep copy from a device Array to a host Array will invoke `cudaMemcopy(...,cudaMemcpyDeviceToHost)`, and a deep copy from a host Array to a device Array will invoke `cudaMemcpy(...,cudaMemcpyHostToDevice)` under the hood. You will need to copy the send buffers from device to host just before calling `MPI_Isend()`, and you will need to copy the recv buffers from host to device just after `MPI_WaitAll()` on the receive requests, `req_r`. 
 
-# Numerical Experiments
 
-A number of numerical experiments are in the code for you to play around with. You can set these by changing the `data_spec_int` variable. 
 
-## Rising Thermal
-
-```
-data_spec_int = DATA_SPEC_THERMAL
-sim_time = 1000
-```
-
-This simulates a rising thermal in a neutral atmosphere, which will look something like a “mushroom” cloud (without all of the violence).
-
-Potential Temperature after 500 seconds:
-
-<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/thermal_pt_0500.png" width=400/>
-
-Potential Temperature after 1,000 seconds:
-
-<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/thermal_pt_1000.png" width=400/>
-
-## Colliding Thermals
-
-```
-data_spec_int = DATA_SPEC_COLLISION
-sim_time = 700
-```
-
-This is similar to the rising thermal test case except with a cold bubble at the model top colliding with a warm bubble at the model bottom to produce some cool looking eddies.
-
-Potential Temperature after 200 seconds:
-
-<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/collision_pt_0200.png" width=400/>
-
-Potential Temperature after 400 seconds:
-
-<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/collision_pt_0400.png" width=400/>
-
-Potential Temperature after 700 seconds:
-
-<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/collision_pt_0700.png" width=400/>
-
-## Mountain Gravity Waves
-
-```
-data_spec_int = DATA_SPEC_MOUNTAIN
-sim_time = 1500
-```
-
-This test cases passes a horizontal wind over a faked mountain at the model bottom in a stable atmosphere to generate a train of stationary gravity waves across the model domain.
-
-Potential Temperature after 400 seconds:
-
-<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/mountain_pt_0400.png" width=400/>
-
-Potential Temperature after 1,300 seconds:
-
-<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/mountain_pt_1300.png" width=400/>
-
-## Density Current
-
-```
-data_spec_int = DATA_SPEC_DENSITY_CURRENT
-sim_time = 600
-```
-
-This test case creates a neutrally stratified atmosphere with a strong cold bubble in the middle of the domain that crashes into the ground to give the feel of a weather front (more of a downburst, I suppose).
-
-Potential Temperature after 200 seconds:
-
-<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/density_current_pt_0200.png" width=400/>
-
-Potential Temperature after 600 seconds:
-
-<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/density_current_pt_0600.png" width=400/>
-
-## Injection
-
-```
-data_spec_int = DATA_SPEC_INJECTION
-sim_time = 1200
-```
-
-A narrow jet of fast and slightly cold wind is injected into a balanced, neutral atmosphere at rest from the left domain near the model top. This has nothing to do with atmospheric flows. It's just here for looks. 
-
-Potential Temperature after 300 seconds:
-
-<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/injection_pt_0300.png" width=400/>
-
-Potential Temperature after 1,000 seconds:
-
-<img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/injection_pt_1000.png" width=400/>
-
-# Physics, PDEs, and Numerical Approximations
 
 
 # MiniWeather Model Scaling Details
@@ -672,121 +643,36 @@ If you want to do scaling studies with miniWeather, this section will be importa
 
 Remember that you can control each of these parameters through the CMake configure.
 
-# Checking for Correctness
+## Running Performance Experiments
 
-## Domain-Integrated Mass and Total Energy
+You may want to evaluate how the performance of `miniweather` is affected by
+increasing the number of threads, increasing the number of MPI processes, or
+doing a combination of both. You can inspect a sample bash script that prepares
+and launches such experiments:
 
-There are two main ways to check for correctness. The easiest is to look at the domain-integrated mass and total energy printed out at the end of the simulation.
-
-### Mass Change
-
-In all cases for Fortran and C, the relative mass change printed out should be at machine precision (magnitude `1.e-13` or lower just to be flexible with reduced precision optimizations). If the mass changes more than this, you've introduced a bug.
-
-For the C++ code, which uses single precision, the relative mass displayed at the end of the run should be of magnitude `1.e-9` or lower.
-
-### Total Energy Change
-
-In order to use total energy to check the answer, you need to set the following parameters:
-
-* `nx_glob`: >= 100
-* `nz_glob`: >= 50 and exactly half of `nx_glob`
-* `sim_time = 400`
-* `data_spec_int = DATA_SPEC_THERMAL`
-
-Also, it is assumed you have not changed any other default parameters such as `xlen` and `zlen`
-
-From there, you can scale up to any problem size or node count you wish. The relative change in total energy should always be negative, and the magnitude should always be less than `4.5e-5`. If the magnitude is larger than this, or if the value is positive, then you have introduced a bug. As you increase the problem size, the energy is always better conserved. These total energy change values are valid for single precision in C++ as well.
-
-**You can run `make test` from the `build` directory of each language folder to run all of the available tests for a given compiler and compiler flags from the CMake configure, and it will automatically check mass and total energy change for you. The tests also automatically set the number of cells, the data specification, and the simulation time for you.**
-
-#### Notes on Summit
-
-On Summit, you need to have the miniWeather repo cloned in /gpfs space, and you need to have an active interactive job for `make test` to work.
-
-## NetCDF Files
-
-Your other option is to create two baseline NetCDF files whose answers you trust: (1) with `-O0` optimizations; and (2) with `-O3` optimizations. Then, you can use the following python script to do a 3-way diff between the two baselines and the refactored code. The refactored diff should be of the same order of magnitude as the baseline compiler optimization diffs. Note that if you run for too long, non-linear chaotic amplification of the initially small differences will eventually be come too large to make for a useful comparison, so try to limit the simulation time to, say, 400 seconds or less.
-
-The reason you have to go to all of this trouble is because of chaotic amplification of initially small differences (the same reason you can't predict weather reliably past a few days). Therefore, you can't compare snapshots to machine precision tolerance.
-
-<details><summary>Click here to expand python script</summary>
- <p>
-  
-```python
-import netCDF4
-import sys
-import numpy as np
-
-#######################################################################################
-#######################################################################################
-##
-## nccmp3.py: A simple python-based NetCDF 3-way comparison tool. The purpose of this
-## is to show whether files 2 and 3 have more of a difference than files 1 and 2. The
-## specific purpose is to compare refactored differences against presumed bit-level
-## differences (like -O0 and -O3 compiler flags). This prints the relative 2-norm of
-## the absolute differences between files 1 & 2 and files 2 & 3, as well as the ratio
-## of the relative 2-norms between the 2-3 comparison and the 1-2 comparison.
-##
-## python nccmp.py file1.nc file2.nc file3.nc
-##
-#######################################################################################
-#######################################################################################
-
-#Complain if there aren't two arguments
-if (len(sys.argv) < 4) :
-  print("Usage: python nccmp.py file1.nc file2.nc")
-  sys.exit(1)
-
-#Open the files
-nc1 = netCDF4.Dataset(sys.argv[1])
-nc2 = netCDF4.Dataset(sys.argv[2])
-nc3 = netCDF4.Dataset(sys.argv[3])
-
-#Print column headers
-print("Var Name".ljust(20)+":  "+"|1-2|".ljust(20)+"  ,  "+"|2-3|".ljust(20)+"  ,  "+"|2-3|/|1-2|")
-
-#Loop through all variables
-for v in nc1.variables.keys() :
-  #Only compare floats
-  if (nc2.variables[v].dtype == np.float64 or nc2.variables[v].dtype == np.float32) :
-    #Grab the variables
-    a1 = nc1.variables[v][:]
-    a2 = nc2.variables[v][:]
-    a3 = nc3.variables[v][:]
-    #Compute the absolute difference vectors
-    adiff12 = abs(a2-a1)
-    adiff23 = abs(a3-a2)
-
-    #Compute relative 2-norm between files 1 & 2 and files 2 & 3
-    norm12 = np.sum( adiff12**2 )
-    norm23 = np.sum( adiff23**2 )
-    #Assume file 1 is "truth" for the normalization
-    norm_denom = np.sum( a1**2 )
-    #Only normalize if this denominator is != 0
-    if (norm_denom != 0) :
-      norm12 = norm12 / norm_denom
-      norm23 = norm23 / norm_denom
-
-    #Compute the ratio between the 2-3 norm and the 1-2 norm
-    normRatio = norm23
-    #If the denom is != 0, then go ahead and compute the ratio
-    if (norm12 != 0) :
-      normRatio = norm23 / norm12
-    else :
-      #If they're both zero, then just give a ratio of "1", showing they are the same
-      if (norm23 == 0) :
-        normRatio = 1
-      #If the 1-2 norm is zero but the 2-3 norm is not, give a very large number so the user is informed
-      else :
-        normRatio = 1e50
-
-    #Only print ratios that are > 2, meaning 2-3 diff is >2x more than the 1-2 diff.
-    #In the future, this should be added as a command line parameter for the user to choose.
-    if (normRatio > 2) :
-      print(v.ljust(20)+":  %20.10e  ,  %20.10e  ,  %20.10e"%(norm12,norm23,norm23/norm12))
+```shell
+./scripts/scaling/launch_sample_scaling_experiments -h
 ```
-</p>
-</details>
+
+You can use that script as a template for running your own experiments.
+
+## Visualizing Performance Results
+
+This will also depend heavily on the types of experiments that you wish to run,
+however, an example python code that can be launched by:
+
+```shell
+python scripts/viz/sample_scaling_results.py
+```
+
+That script has no `-h` option supported; however, at the top of the file
+is a small description of the contents of the script itself and what it's for.
+
+You copy/modify it to accomplish your plotting goals for your experiments.
+
+Below is an example output from the script:
+
+<img width="999" height="799" alt="miniweather_openmp" src="https://github.com/user-attachments/assets/5f2959bf-393a-4ae2-8008-67383dffcc01" />
 
 # Further Resources
 
@@ -803,9 +689,4 @@ for v in nc1.variables.keys() :
   * https://rocm-documentation.readthedocs.io/en/latest/Programming_Guides/Programming-Guides.html#hc-programming-guide
   * https://www.khronos.org/files/sycl/sycl-121-reference-card.pdf
   * https://github.com/mrnorman/YAKL/wiki
-
-# Common Problems
-
-* You cannot use `-DARRAY_DEBUG` on the GPU. If you do, it may segfault or give wrong answers
-* It appears if you build for the wrong GPU, the code often will still run but may give wrong answers.
 

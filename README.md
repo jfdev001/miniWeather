@@ -398,7 +398,8 @@ The second place is in the routine that sets the halo values in the x-direction.
 Once you complete this, the code will be fully parallelized in MPI. Both of the places you need to add code for MPI are marked in the serial code, and there are some extra hints in the `set_halo_values_x()` routine as well.
 
 
-# MiniWeather Model Scaling Details
+# MiniWeather Model Scaling
+## Details to Consider
 
 If you want to do scaling studies with miniWeather, this section will be important to make sure you're doing an apples-to-apples comparison.
 
@@ -409,7 +410,7 @@ If you want to do scaling studies with miniWeather, this section will be importa
 
 Remember that you can control each of these parameters through the CMake configure.
 
-# Running Performance Experiments
+## Running Performance Experiments
 
 You may want to evaluate how the performance of `miniweather` is affected by
 increasing the number of threads, increasing the number of MPI processes, or
@@ -422,7 +423,7 @@ and launches such experiments:
 
 You can use that script as a template for running your own experiments.
 
-# Visualizing Performance Results
+## Visualizing Performance Results
 
 This will also depend heavily on the types of experiments that you wish to run,
 however, an example python code that can be launched by:

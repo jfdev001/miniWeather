@@ -216,7 +216,7 @@ git remote add upstream git@github.com:jfdev001/miniWeather.git
 git fetch upstream  # allows you to pull code from jfdev001 in the future
 ```
 
-## Directories and Compiling
+## Building the Code and testing the workflow
 
 There are four main directories in the mini app: (1) a Fortran source
 directory; (2) a C source directory; (3) a C++ source directory; and (4) a
@@ -229,8 +229,6 @@ different HPC systems and compiler setups. Those build scripts in the `c`
 and `cpp` directories will *not* work on Levante and will have to be modified
 if you wish to run those codes.
 
-## Building and Testing Workflow
-
 Note that you must source the cmake scripts in the `build/` directores because
 they do module loading and set a `TEST_MPI_COMMAND` environment variable
 because it will differ from machine to machine.
@@ -239,12 +237,12 @@ The first thing you should do is verify that you can compile and run
 `miniweather`:
 
 ```shell
-bash ${MINIWEATHER_DIR}/cmake_levante_test
+bash ${MINIWEATHER_DIR}/fortran/build/cmake_levante_test
 ```
 
-This generates a directory called `${MINIWEATHER_DIR}/build/build_output/test`
+This generates a directory called `${MINIWEATHER_DIR}/fortran/build/build_output/test`
 where all configuration (e.g., auto-generated Makefiles) and compilation
-artifacts (e.g., executable binaries like `serial`, `openmp`, and `mpi`).
+artifacts (e.g., executable binaries like `serial`, `openmp`, and `mpi`) are placed.
 
 You should *always* read the usage documentation for any script you run. For
 nearly every script provided, you can do the following to get usage
@@ -263,20 +261,18 @@ to Levante: (1) one just for looking at the uage documentation of scripts so
 that you know what the inputs and outputs are, and (2) one for actually
 launching scripts and/or editing files. If you are Linux or Mac, you can also
 launch multiple terminals and each of them can independently ssh to Levante.
-Levante also comes with `tmux` (terminal multiplexer) by default, so you could
-use that instead if you're already familiar.
 
-You can check to see what `cmake_levante_test` by typing
+You can check to see what `cmake_levante_test` is doing by typing
 
 ```shell
-bash ${MINIWEATHER_DIR}/cmake_levante_test -h
+bash ${MINIWEATHER_DIR}/fortran/build/cmake_levante_test -h
 ```
 
 Note that the `cmake_levante_test` simply wraps the
 `cmake_levante_config_and_build` script discussed in the following sections.
 
 In the real world, there may be limited or *no* documentation for software that
-you are using. Even worse, they're may be documentation but it could be *out of
+you are using. Even worse, there may be documentation but it could be *out of
 date*. This is almost worse than having no documentation because you might
 think the software is doing one thing while it is in reality doing something
 completely unexpected. You need to be prepared to *read* through code to
@@ -307,7 +303,7 @@ see
 
 ```shell
 # assuming in build/ dir
-bash ${MINIWEATHER_DIR}/cmake_levante_build_and_configure -h
+bash cmake_levante_config_and_build -h
 ```
 
 This script forwards arguments to two calls to `cmake` that configure and build
@@ -394,41 +390,9 @@ the Slurm scheduler to actually launch your job. You should always prototype
 any experiments or scripts that you write which involve Slurm such that they
 request a very short amount of time (i.e., less than 1 minute).
 
-## Running Performance Experiments
-
-You may want to evaluate how the performance of `miniweather` is affected by
-increasing the number of threads, increasing the number of MPI processes, or
-doing a combination of both. You can inspect a sample bash script that prepares
-and launches such experiments:
-
-```shell
-bash ${MINIWEATHER_DIR}/fortrna/scripts/scaling/launch_sample_scaling_experiments -h
-```
-
-You can use that script as a template for running your own experiments.
-
-## Visualizing Performance Results
-
-This will also depend heavily on the types of experiments that you wish to run,
-however, an example python code that can be launched by:
-
-```shell
-python ${MINIWEATHER_DIR}/fortran/scripts/viz/sample_scaling_results.py
-```
-
-That script has no `-h` option supported; however, at the top of the file
-is a small description of the contents of the script itself and what it's for.
-
-You copy/modify it to accomplish your plotting goals for your experiments.
-
-Below is an example output from the script:
-
-<img width="999" height="799" alt="miniweather_openmp" src="https://github.com/user-attachments/assets/5f2959bf-393a-4ae2-8008-67383dffcc01" />
-
-
 ## Viewing the Output
 
-The file I/O is done in the netCDF format: (https://www.unidata.ucar.edu/software/netcdf). To me, the easiest way to view the data is to use a tool called “ncview” (http://meteora.ucsd.edu/~pierce/ncview_home_page.html). To use it, you can simply type `ncview output.nc`, making sure you have X-forwarding enabled in your ssh session. Further, you can call `ncview -frames output.nc`, and it will dump out all of your frames in the native resolution you're viewing the data in, and you you can render a movie with tools like `ffmpeg`. 
+The file I/O is done in the netCDF format: (https://www.unidata.ucar.edu/software/netcdf). To me, the easiest way to view the data is to use a tool called “ncview” (http://meteora.ucsd.edu/~pierce/ncview_home_page.html). To use it, you can simply type `ncview output.nc`, making sure you have X-forwarding enabled in your ssh session. Further, you can call `ncview -frames output.nc`, and it will dump out all of your frames in the native resolution you're viewing the data in, and you can render a movie with tools like `ffmpeg`. 
 
 # Parallelization
 
@@ -708,19 +672,5 @@ Below is an example output from the script:
 
 <img width="999" height="799" alt="miniweather_openmp" src="https://github.com/user-attachments/assets/5f2959bf-393a-4ae2-8008-67383dffcc01" />
 
-# Further Resources
 
-* Directives-Based Approaches
-  * https://github.com/mrnorman/miniWeather/wiki/A-Practical-Introduction-to-GPU-Refactoring-in-Fortran-with-Directives-for-Climate
-  * https://www.openacc.org 
-  * https://www.openacc.org/sites/default/files/inline-files/OpenACC%20API%202.6%20Reference%20Guide.pdf
-  * https://www.openmp.org
-  * https://www.openmp.org/wp-content/uploads/OpenMP-4.5-1115-CPP-web.pdf
-  * https://devblogs.nvidia.com/getting-started-openacc
-* C++
-  * https://github.com/kokkos/kokkos/wiki
-  * https://raja.readthedocs.io/en/main
-  * https://rocm-documentation.readthedocs.io/en/latest/Programming_Guides/Programming-Guides.html#hc-programming-guide
-  * https://www.khronos.org/files/sycl/sycl-121-reference-card.pdf
-  * https://github.com/mrnorman/YAKL/wiki
 

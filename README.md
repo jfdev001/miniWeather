@@ -178,8 +178,9 @@ Potential Temperature after 1,000 seconds:
 
 ```shell
 cd /work/bm1233/${USER}  
-git clone git@github.com:jfdev001/miniWeather.git 
-cd miniWeather
+git clone git@github.com:jfdev001/miniWeather.git
+MINIWEATHER_DIR=$(pwd)/miniWeather
+cd ${MINIWEATHER_DIR}
 git submodule update --init --recursive
 ```
 
@@ -201,7 +202,8 @@ on your GitHub. The workflow would look something like the following
 cd /work/bm1233/${USER}  
 # assuming you have forked miniweather
 git clone git@github.com:YOUR_GITHUB_USER_NAME_HERE/miniWeather.git 
-cd miniWeather
+MINIWEATHER_DIR=$(pwd)/miniWeather
+cd ${MINIWEATHER_DIR}
 git submodule update --init --recursive
 
 # by default, the remote origin (i.e., source of your code on GitHub
@@ -237,13 +239,12 @@ The first thing you should do is verify that you can compile and run
 `miniweather`:
 
 ```shell
-cd miniWeather/fortran/build
-source cmake_levante_test # or bash cmake_levante_test or ./cmake_levante_test
+bash ${MINIWEATHER_DIR}/cmake_levante_test
 ```
 
-This generates a directory called `build_output/test` where all configuration
-(e.g., auto-generated Makefiles) and compilation artifacts (e.g., executable
-binaries like `serial`, `openmp`, and `mpi`).
+This generates a directory called `${MINIWEATHER_DIR}/build/build_output/test`
+where all configuration (e.g., auto-generated Makefiles) and compilation
+artifacts (e.g., executable binaries like `serial`, `openmp`, and `mpi`).
 
 You should *always* read the usage documentation for any script you run. For
 nearly every script provided, you can do the following to get usage
@@ -268,7 +269,7 @@ use that instead if you're already familiar.
 You can check to see what `cmake_levante_test` by typing
 
 ```shell
-./cmake_levante_test -h
+bash ${MINIWEATHER_DIR}/cmake_levante_test -h
 ```
 
 Note that the `cmake_levante_test` simply wraps the
@@ -306,7 +307,7 @@ see
 
 ```shell
 # assuming in build/ dir
-./cmake_levante_build_and_configure -h
+bash ${MINIWEATHER_DIR}/cmake_levante_build_and_configure -h
 ```
 
 This script forwards arguments to two calls to `cmake` that configure and build
@@ -335,6 +336,7 @@ As an example:
 
 ```shell
 # assuming in fortran/ directory... this produces `output.nc` there
+cd ${MINIWEATHER_DIR}/fortran
 ./build/build_output/test/serial_test
 ```
 
@@ -351,7 +353,7 @@ use later for running simulations. You can check out the parameters for this
 script here:
 
 ```shell
-./scripts/templates/make_run_scripts -h
+bash ${MINIWEATHER_DIR}/fortran/scripts/templates/make_run_scripts -h
 ```
 
 This script can be used to generate Slurm scripts specific to your user for
@@ -367,14 +369,14 @@ You should generate an example run script with the following:
 
 ```shell
 EMAIL_HERE="put_your_email@gmail.com"
-./scripts/templates/make_run_scripts ${EMAIL_HERE}
+bash ${MINIWEATHER_DIR}/fortran/scripts/templates/make_run_scripts ${EMAIL_HERE}
 ```
 
 This generates `scripts/run/compute_miniweather.run`. You should inspect what
 this script does with
 
 ```shell
-scripts/run/compute_miniweather.run -h
+bash ${MINIWEATHER_DIR}/fortran/scripts/run/compute_miniweather.run -h
 ```
 
 In particular, you should run each of the `bash` examples in the usage doc to
@@ -391,6 +393,38 @@ of time you would like to run your job may result in you waiting longer for
 the Slurm scheduler to actually launch your job. You should always prototype
 any experiments or scripts that you write which involve Slurm such that they
 request a very short amount of time (i.e., less than 1 minute).
+
+## Running Performance Experiments
+
+You may want to evaluate how the performance of `miniweather` is affected by
+increasing the number of threads, increasing the number of MPI processes, or
+doing a combination of both. You can inspect a sample bash script that prepares
+and launches such experiments:
+
+```shell
+bash ${MINIWEATHER_DIR}/fortrna/scripts/scaling/launch_sample_scaling_experiments -h
+```
+
+You can use that script as a template for running your own experiments.
+
+## Visualizing Performance Results
+
+This will also depend heavily on the types of experiments that you wish to run,
+however, an example python code that can be launched by:
+
+```shell
+python ${MINIWEATHER_DIR}/fortran/scripts/viz/sample_scaling_results.py
+```
+
+That script has no `-h` option supported; however, at the top of the file
+is a small description of the contents of the script itself and what it's for.
+
+You copy/modify it to accomplish your plotting goals for your experiments.
+
+Below is an example output from the script:
+
+<img width="999" height="799" alt="miniweather_openmp" src="https://github.com/user-attachments/assets/5f2959bf-393a-4ae2-8008-67383dffcc01" />
+
 
 ## Viewing the Output
 

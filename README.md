@@ -320,7 +320,7 @@ It's best if you keep `NX` exactly twice the value of `NZ` since the domain is
 
 The data specifications are `DATA_SPEC_COLLISION`, `DATA_SPEC_THERMAL`,
 `DATA_SPEC_MOUNTAIN`, `DATA_SPEC_DENSITY_CURRENT`, and `DATA_SPEC_INJECTION`,
-and each are described later on.
+as described above.
 
 ## Running the Code
 

@@ -50,7 +50,7 @@ Physics, https://jfdev001.github.io/
 
 
 # Introduction
-There are four main directories in MiniWeather: (1) a Fortran source directory; (2) a C source directory; (3) a C++ source directory; and (4) a documentation directory. We here focus on Fortran, but also provide information for optional exploration with C and C++.
+There are four main directories in MiniWeather: (1) a Fortran source directory; (2) a C source directory; (3) a C++ source directory; and (4) a documentation directory. We focus on MPI and Open MP in Fortran code, but you can find information on C and C++ and on OpenACC here: https://github.com/mrnorman/miniWeather
 
 ## Fluid State Variables
 
@@ -414,14 +414,6 @@ The code makes room for so-called “halo” cells in the fluid state. This is a
 
 In the Fortran code's fluid state (`state`), the x- and z-dimensions are dimensioned as multi-dimensional arrays that range from `1-hs:nx+hs`. In the x-direction, `1-hs:0` belong to the MPI task to the left, cells `1:nx` belong to the current MPI task, and `nx+1:nx+hs` belong to the MPI task to the right. In the z-dimension, `1-hs:0` are artificially set to mimic a solid wall boundary condition at the bottom, and `nz+1:nz+hs` are the same for the top boundary. The cell-interface fluxes (`flux`) are dimensioned as `1:nx+1` and `1:nz+1` in the x- and z-directions, and the cell average tendencies (`tend`) are dimensioned `1:nx` and `1:nz` in the x- and z-directions. The cell of index `i` will have left- and right-hand interface fluxes of index `i` and `i+1`, respectively, and it will be evolved by the tendency at index `i`. The analog of this is also true in the z-direction.
 
-### C
-
-In the C code, the fluid `state` array is dimensioned to size `nz+2*hs` and `nx+2*hs` in the x- and z-directions. In the x-direction, cells `0` to `hs-1` belong to the left MPI task, cells `hs` to `nx+hs-1` belong to the current MPI tasks, and cells `nx+hs` to `nx+2*hs-1` belong to the right MPI task. The z-direction's halo cells are used to mimic solid wall boundaries. The cell-interface fluxes (`flux`) are dimensioned as `nx+1` and `nz+1` in the x- and z-directions, and the cell average tendencies (`tend`) are dimensioned `nx` and `nz` in the x- and z-directions. The cell of index `i+hs` will have left- and right-hand interface fluxes of index `i` and `i+1`, respectively, and it will be evolved by the tendency at index `i`. The analog of this is also true in the z-direction.
-
-### C++
-
-The C++ indexing is the same as the C indexing, but instead of having to flatten array indices into a single dimension like the C code, multi-dimensional arrays are used with `()` indexing syntax and the right-most index varying the fastest.
-
 ## MPI Domain Decomposition
 
 This code was designed to use domain decomposition, where each MPI rank “owns” a certain set of cells in the x-direction and contains two “halo” cells from the left- and right-hand MPI tasks in the x-direction as well. The domain is only decomposed in the x-direction and not the z-direction for simplicity.
@@ -443,191 +435,6 @@ The second place is in the routine that sets the halo values in the x-direction.
 5. Unpack the data from your left and right neighbors and place the data into your MPI rank's halo cells. 
 
 Once you complete this, the code will be fully parallelized in MPI. Both of the places you need to add code for MPI are marked in the serial code, and there are some extra hints in the `set_halo_values_x()` routine as well.
-
-## OpenMP CPU Threading
-
-For the OpenMP code, you basically need to decorate the loops with `omp parallel do` in Fortran or `omp parallel for` in C, and pay attention to any variables you need to make `private()` so that each thread has its own copy. Keep in mind that OpenMP works best on “outer” loops rather than “inner” loops. Also, for sake of performance, there are a couple of instances where it is wise to use the “collapse” clause because the outermost loop is not large enough to support the number of threads most CPUs have.
-
-In Fortran, you can parallelize three loops with the following directive:
-
-```fortran
-!$omp parallel do collapse(3)
-do ll = 1 , NUM_VARS
-  do k = 1 , nz
-    do i = 1 , nx
-      state_out(i,k,ll) = state_init(i,k,ll) + dt * tend(i,k,ll)
-    enddo
-  enddo
-enddo
-```
-
-This will collapse the three loops together (combining their parallelism) and then launch that parallelism among a number of CPU threads. In C / C++, it will be:
-
-```C++
-#pragma omp parallel for collapse(3)
-for (ll=0; ll<NUM_VARS; ll++) {
-  for (k=0; k<nz; k++) {
-    for (i=0; i<nx; i++) {
-      inds = ll*(nz+2*hs)*(nx+2*hs) + (k+hs)*(nx+2*hs) + i+hs;
-      indt = ll*nz*nx + k*nx + i;
-      state_out[inds] = state_init[inds] + dt * tend[indt];
-    }
-  }
-}
-```
-
-## OpenACC Accelerator Threading
-
-To thread the same loops among the threads on a GPU, you will use the following in Fortran:
-
-```fortran
-!$acc parallel loop collapse(3)
-do ll = 1 , NUM_VARS
-  do k = 1 , nz
-    do i = 1 , nx
-      state_out(i,k,ll) = state_init(i,k,ll) + dt * tend(i,k,ll)
-    enddo
-  enddo
-enddo
-```
-
-In C / C++, it will be:
-
-```C++
-#pragma acc parallel loop collapse(3)
-for (ll=0; ll<NUM_VARS; ll++) {
-  for (k=0; k<nz; k++) {
-    for (i=0; i<nx; i++) {
-      inds = ll*(nz+2*hs)*(nx+2*hs) + (k+hs)*(nx+2*hs) + i+hs;
-      indt = ll*nz*nx + k*nx + i;
-      state_out[inds] = state_init[inds] + dt * tend[indt];
-    }
-  }
-}
-```
-
-The OpenACC approach will differ depending on whether you're in Fortran or C. Just a forewarning, OpenACC is much more convenient in Fortran when it comes to data movement because in Fortran, the compiler knows how big your arrays are, and therefore the compiler can (and does) create all of the data movement for you (NOTE: This is true for PGI and Cray but not for GNU at the moment). All you have to do is optimize the data movement after the fact. for more information about the OpenACC copy directives, see:
-
-https://github.com/mrnorman/miniWeather/wiki/A-Practical-Introduction-to-GPU-Refactoring-in-Fortran-with-Directives-for-Climate#optimizing--managing-data-movement
-
-### Fortran Code
-
-The OpenACC parallelization is a bit more involved when it comes to performance. But, it's a good idea to just start with the kernels themselves, since the compiler will generate all of your data statements for you on a per-kernel basis. You need to pay attention to private variables here as well. Only arrays need to be privatized. Scalars are automatically privatized for you.
-
-Once you're getting the right answer with the kernels on the GPU, you can look at optimizing data movement by putting in data statements. I recommend putting data statements for the `state`, `tend`, `flux`, `hy_*`, and the MPI buffers (`sendbuf_l`, `sendbuf_r`, `recvbuf_l`, and `recvbuf_r`) around the main time stepping loop. Then, you need to move the data to the host before sending MPI data, back to the device once you receive MPI data, and to the host before file I/O.
-
-### C Code
-
-In the C code, you'll need to put in manual `copy()`, `copyin()`, and `copyout()` statements on a **per-kernel basis**, and you'll need to explicitly declare the size of each array as well.
-
-**IMPORTANT**: The syntax for data movement in C will seem odd to you. The syntax is:
-
-```C
-#pragma acc data copy( varname[ starting_index : size_of_transfer ] )
-```
-
-So, for instance, if you send a variable, `var`, of size `n` to the GPU, you will say, `#pragma acc data copyin(var[0:n])`. Many would expect it to look like an array slice (e.g., `(0:n-1)`), but it is not. 
-
-Other than this, the approach is the same as with the Fortran case.
-
-## C++ Performance Portability
-
-The C++ code is in the `cpp` directory, and it uses a custom multi-dimensional `Array` class from `Array.h` for large global variables and Static Array (`SArray`) class in `SArray.h` for small local arrays placed on the stack. For adding MPI to the serial code, please follow the instructions in the above MPI section. The primary purpose of the C++ code is to get used to what performance portability looks like in C++, and this is moving from the `miniWeather_mpi.cpp` code to the `miniWeather_mpi_parallelfor.cpp` code, where you change all of the loops into `parallel_for` kernel launches, similar to the [Kokkos](https://github.com/kokkos/kokkos) syntax. As an example of transforming a set of loops into `parallel_for`, consider the following code:
-
-```C++
-inline void applyTendencies(realArr &state2, real const c0, realArr const &state0,
-                                             real const c1, realArr const &state1,
-                                             real const ct, realArr const &tend,
-                                             Domain const &dom) {
-  for (int l=0; l<numState; l++) {
-    for (int k=0; k<dom.nz; k++) {
-      for (int j=0; j<dom.ny; j++) {
-        for (int i=0; i<dom.nx; i++) {
-          state2(l,hs+k,hs+j,hs+i) = c0 * state0(l,hs+k,hs+j,hs+i) +
-                                     c1 * state1(l,hs+k,hs+j,hs+i) +
-                                     ct * dom.dt * tend(l,k,j,i);
-        }
-      }
-    }
-  }
-}
-```
-
-will become:
-
-```C++
-inline void applyTendencies(realArr &state2, real const c0, realArr const &state0,
-                                             real const c1, realArr const &state1,
-                                             real const ct, realArr const &tend,
-                                             Domain const &dom) {
-  // for (int l=0; l<numState; l++) {
-  //   for (int k=0; k<dom.nz; k++) {
-  //     for (int j=0; j<dom.ny; j++) {
-  //       for (int i=0; i<dom.nx; i++) {
-  yakl::parallel_for( Bounds<4>(numState,dom.nz,dom.ny,dom.nx) , YAKL_LAMBDA (int l, int k, int j, int i) {
-    state2(l,hs+k,hs+j,hs+i) = c0 * state0(l,hs+k,hs+j,hs+i) +
-                               c1 * state1(l,hs+k,hs+j,hs+i) +
-                               ct * dom.dt * tend(l,k,j,i);
-  }); 
-}
-```
-
-
-For a fuller description of how to move loops to parallel_for, please see the following webpage:
-
-https://github.com/mrnorman/YAKL/wiki/CPlusPlus-Performance-Portability-For-OpenACC-and-OpenMP-Folks
-
-https://github.com/mrnorman/YAKL
-
-I strongly recommend moving to `parallel_for` while compiling for the **CPU** so you don't have to worry about separate memory address spaces at the same time. Be sure to use array bounds checking during this process to ensure you don't mess up the indexing in the `parallel_for` launch. You can do this by adding `-DARRAY_DEBUG` to the `CXX_FLAGS` in your `Makefile`. After you've transformed all of the for loops to `parallel_for`, you can deal with the complications of separate memory spaces.
-
-### GPU Modifications
-
-First, you'll have to pay attention to asynchronicity. `parallel_for` is asynchronous, and therefore, you'll need to add `yakl::fence()` in two places: (1) MPI ; and (2) File I/O.
-
-Next, if a `parallel_for`'s kernel uses variables with global scope, which it will in this code, you will get a runtime error when running on the GPU. C++ Lambdas do not capture variables with global scope, and therefore, you'll be using CPU copies of that data, which isn't accessible from the GPU. The most convenient way to handle this is to create local references as follows:
-
-```C++
-auto &varName = ::varName;
-```
-
-The `::varName` syntax is telling the compiler to look in the global context for `varName` rather than the local context.
-
-This process will be tedious, but it is something you nearly always have to do in C++ performance portability approaches. So it's good to get used to doing it. You will run into similar issues if you attempt to __use data from your own class__ because the `this` pointer is typically into CPU memory because class objects are often allocated on the CPU. This can also be circumvented via local references in the same manner as above.
-
-You have to put `YAKL_INLINE` in front of the following functions because they are called from kernels: `injection`, `density_current`, `turbulence`, `mountain_waves`, `thermal`, `collision`, `hydro_const_bvfreq`, `hydro_const_theta`, and `sample_ellipse_cosine`.
-
-Next, you'll need to create new send and recv MPI buffers that are created in CPU memory to easily interoperate with the MPI library. To do this, you'll use the `realArrHost` `typedef` in `const.h`.
-
-```C++
-realArrHost sendbuf_l_cpu;
-realArrHost sendbuf_r_cpu;
-realArrHost recvbuf_l_cpu;
-realArrHost recvbuf_r_cpu;
-```
-
-You'll also need to replace the buffers in `MPI_Isend()` and `MPI_Irecv()` with the CPU versions. 
-
-Next, you need to allocate these in `init()` in a similar manner as the existing MPI buffers, but replacing `realArr` with `realArrHost`. 
-
-Finally, you'll need to manage data movement to and from the CPU in the File I/O and in the MPI message exchanges.
-
-For the File I/O, you can use `Array::createHostCopy()` in the `ncmpi_put_*` routines, and you can use it in-place before the `.data()` function calls, e.g.,
-
-```C++
-arrName.createHostCopy().data()
-```
-
-For the MPI buffers, you'll need to use the `Array::deep_copy_to(Array &target)` member function. e.g.,
-
-```C++
-sendbuf_l.deep_copy_to(sendbuf_l_cpu);
-```
-
-A deep copy from a device Array to a host Array will invoke `cudaMemcopy(...,cudaMemcpyDeviceToHost)`, and a deep copy from a host Array to a device Array will invoke `cudaMemcpy(...,cudaMemcpyHostToDevice)` under the hood. You will need to copy the send buffers from device to host just before calling `MPI_Isend()`, and you will need to copy the recv buffers from host to device just after `MPI_WaitAll()` on the receive requests, `req_r`. 
-
-
-
 
 
 # MiniWeather Model Scaling Details

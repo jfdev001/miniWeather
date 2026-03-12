@@ -65,11 +65,11 @@ There are four main arrays used in this code: `state`, `state_tmp`, `flux`, and 
 * `flux`: This is fluid state at cell boundaries in the x- and z-directions, and the units and meanings are the same as for `state` and `state_tmp`. In the x-direction update, the values of `flux` at indices `i` and `i+1` represents the fluid state at the left- and right-hand boundaries of cell `i`. The indexing is analogous in the z-direction. The fluxes are used to exchange fluid properties with neighboring cells.
 * `tend`: This is the time tendency of the fluid state <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\partial\mathbf{q}/\partial&space;t" title="\large \partial\mathbf{q}/\partial t" />, where <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\mathbf{q}" title="\large \mathbf{q}" /> is the the state vector, and as the name suggests, it has the same meaning and units as state, except per unit time (appending <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\text{s}^{-1}" title="\large \text{s}^{-1}" /> to the units). In the Finite-Volume method, the time tendency of a cell is equivalent to the divergence of the flux across a cell.
 
-# Numerical Experiments
+## Numerical Experiments
 
 A number of numerical experiments are in the code for you to play around with. You can set these by changing the `data_spec_int` variable. 
 
-## Rising Thermal
+### Rising Thermal
 
 ```
 data_spec_int = DATA_SPEC_THERMAL
@@ -86,7 +86,7 @@ Potential Temperature after 1,000 seconds:
 
 <img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/thermal_pt_1000.png" width=400/>
 
-## Colliding Thermals
+### Colliding Thermals
 
 ```
 data_spec_int = DATA_SPEC_COLLISION
@@ -107,7 +107,7 @@ Potential Temperature after 700 seconds:
 
 <img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/collision_pt_0700.png" width=400/>
 
-## Mountain Gravity Waves
+### Mountain Gravity Waves
 
 ```
 data_spec_int = DATA_SPEC_MOUNTAIN
@@ -124,7 +124,7 @@ Potential Temperature after 1,300 seconds:
 
 <img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/mountain_pt_1300.png" width=400/>
 
-## Density Current
+### Density Current
 
 ```
 data_spec_int = DATA_SPEC_DENSITY_CURRENT
@@ -141,7 +141,7 @@ Potential Temperature after 600 seconds:
 
 <img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/density_current_pt_0600.png" width=400/>
 
-## Injection
+### Injection
 
 ```
 data_spec_int = DATA_SPEC_INJECTION
@@ -410,8 +410,6 @@ For the C++ code, you will need to work with the initialization and File I/O cod
 
 The code makes room for so-called “halo” cells in the fluid state. This is a common practice in any algorithm that uses stencil-based reconstruction to estimate variation within a domain. In this code, there are `hs` halo cells on either side of each spatial dimension, and I pretty much hard-code `hs=2`.
 
-### Fortran
-
 In the Fortran code's fluid state (`state`), the x- and z-dimensions are dimensioned as multi-dimensional arrays that range from `1-hs:nx+hs`. In the x-direction, `1-hs:0` belong to the MPI task to the left, cells `1:nx` belong to the current MPI task, and `nx+1:nx+hs` belong to the MPI task to the right. In the z-dimension, `1-hs:0` are artificially set to mimic a solid wall boundary condition at the bottom, and `nz+1:nz+hs` are the same for the top boundary. The cell-interface fluxes (`flux`) are dimensioned as `1:nx+1` and `1:nz+1` in the x- and z-directions, and the cell average tendencies (`tend`) are dimensioned `1:nx` and `1:nz` in the x- and z-directions. The cell of index `i` will have left- and right-hand interface fluxes of index `i` and `i+1`, respectively, and it will be evolved by the tendency at index `i`. The analog of this is also true in the z-direction.
 
 ## MPI Domain Decomposition
@@ -448,7 +446,7 @@ If you want to do scaling studies with miniWeather, this section will be importa
 
 Remember that you can control each of these parameters through the CMake configure.
 
-## Running Performance Experiments
+# Running Performance Experiments
 
 You may want to evaluate how the performance of `miniweather` is affected by
 increasing the number of threads, increasing the number of MPI processes, or
@@ -461,7 +459,7 @@ and launches such experiments:
 
 You can use that script as a template for running your own experiments.
 
-## Visualizing Performance Results
+# Visualizing Performance Results
 
 This will also depend heavily on the types of experiments that you wish to run,
 however, an example python code that can be launched by:

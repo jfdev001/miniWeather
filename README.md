@@ -121,7 +121,6 @@ Potential Temperature after 1,000 seconds:
 
 <img src="https://github.com/mrnorman/miniWeather/blob/main/documentation/images/injection_pt_1000.png" width=400/>
 
-
 # Compiling and Running the Code
 
 ## Software Dependencies
@@ -179,7 +178,7 @@ git remote add upstream git@github.com:jfdev001/miniWeather.git
 git fetch upstream  # allows you to pull code from jfdev001 in the future
 ```
 
-## Building the Code and testing the workflow
+## Building the Code and Testing the Workflow
 
 There are four main directories in the mini app: (1) a Fortran source
 directory; (2) a C source directory; (3) a C++ source directory; and (4) a
@@ -318,7 +317,7 @@ bash ${MINIWEATHER_DIR}/fortran/scripts/templates/make_run_scripts -h
 This script can be used to generate Slurm scripts specific to your user for
 running `miniweather` simulations. These scripts are, by convention, written to
 `scripts/run` and are *not* tracked by `git`. If you wish to modify the
-`.gitignore` file and remove the line containing `*.run`, `git` will not track
+`.gitignore` file and remove the line containing `*.run`, `git` will track
 your generated run scripts. The run scripts will also be prefixed with the
 partition that you have requested. Different partitions on levante (e.g.,
 shared, compute, gpu) give the user differ compute resources. By default the
@@ -418,6 +417,7 @@ doing a combination of both. You can inspect a sample bash script that prepares
 and launches such experiments:
 
 ```shell
+# assuming in the fortran/ directory
 ./scripts/scaling/launch_sample_scaling_experiments -h
 ```
 
@@ -429,6 +429,7 @@ This will also depend heavily on the types of experiments that you wish to run,
 however, an example python code that can be launched by:
 
 ```shell
+# assuming in the fortran/ directory
 python scripts/viz/sample_scaling_results.py
 ```
 

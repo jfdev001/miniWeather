@@ -425,6 +425,17 @@ You can use that script as a template for running your own experiments.
 
 ## Visualizing Performance Results
 
+If you have not setup your Python environment, do the following:
+
+```shell
+cd ${MINIWEATHER_DIR}
+module load python3
+python -m venv .venv      # initialize the virtual environment 
+source .venv/bin/activate # activate the virtual environment
+[[ ! $(which pip) == *"venv"* ]] && echo "venv not activated, pip will install globally"
+pip install -r requirements.txt
+```
+
 This will also depend heavily on the types of experiments that you wish to run,
 however, an example python code that can be launched by:
 

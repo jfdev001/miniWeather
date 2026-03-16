@@ -591,8 +591,8 @@ module load python3
 source .venv/bin/activate 
 ```
 
-This will also depend heavily on the types of experiments that you wish to run,
-however, an example python code that can be launched by:
+Visualizing performance results will depend heavily on the types of experiments
+that you wish to run, however, an example python code that can be launched by:
 
 ```shell
 # assuming in the fortran/ directory

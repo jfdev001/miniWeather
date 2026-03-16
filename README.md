@@ -513,8 +513,8 @@ that we provide set the appropriate resources based on the environment variables
 
 OpenMP provides shared-memory parallelism inside a single process.
 
-When the program starts, the OpenMP runtime reads the environment variable (
-see [all OMP environment
+When the program starts, the OpenMP runtime reads the environment variable (see
+[all OMP environment
 variables](https://www.openmp.org/spec-html/5.0/openmpch6.html) for more info):
 
 ```
@@ -536,10 +536,10 @@ within the resources provided by the operating system and scheduler.
 
 #### MPI Considerations
 
-The sample script currently runs OpenMP-only experiments, so MPI
-experiments would require additional control parameters. At the moment,
-`--ntasks` is computed in the following way (see
-`scripts/templates/miniweather.run.template`):
+The sample script currently runs OpenMP-only experiments, so MPI experiments
+would require additional control parameters. At the moment, `--ntasks` is
+computed in the following way (see
+[miniweather.run.template](https://github.com/jfdev001/miniWeather/blob/244dcd663f2496152c685dd04e85578142e05340/fortran/scripts/templates/miniweather.run.template#L137-L147)):
 
 ```
 # compute number of mpi processes available based on the number of threads
@@ -558,15 +558,15 @@ codebase such as ICON.
 
 #### Summary
 
-* To achieve shared memory parallelization, set `OMP_NUM_THREADS` and do not
+* To achieve **shared memory** parallelization, set `OMP_NUM_THREADS` and do not
 change `LOGICAL_CPUS_PER_NODE`.
-* To achieve distributed memory parallelization (in our examples, we do only
+* To achieve **distributed memory** parallelization (in our examples, we do only
 single-node distributed memory parallelization, so we don't take advantage of 
 the full capabilities of MPI), set `LOGICAL_CPUS_PER_NODE` since it will
 directly map to the number of MPI processes. That is, if
 `LOGICAL_CPUS_PER_NODE=4` and `OMP_NUM_THREADS=1`, then 4 MPI processes are
 available during the simulation.
-* To achieve hybrid parallelization, you must set both `LOGICAL_CPUS_PER_NODE`
+* To achieve **hybrid** parallelization, you must set both `LOGICAL_CPUS_PER_NODE`
 and `OMP_NUM_THREADS`; however, consider that the number of MPI processes
 will be computed based on those two numbers.
 

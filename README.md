@@ -424,10 +424,10 @@ and launches such experiments:
 
 You can use that script as a template for running your own experiments.
 
-The next section provides further information about launching such scripts and
+The next sections provides further information about launching such scripts and
 the relationship with Slurm.
 
-### Execution Environment: Slurm and OpenMP
+### Execution Environment: Slurm, OpenMP, and MPI
 
 The sample scaling script launches MiniWeather experiments on a Slurm-managed
 cluster using different OpenMP thread counts. Several components interact
@@ -440,7 +440,7 @@ during execution:
 Understanding which system controls which behavior is important when
 interpreting scaling results.
 
-### What Slurm Does
+#### What Slurm Does
 
 The command
 
@@ -460,15 +460,16 @@ Slurm is responsible for:
 The actual simulation program is started inside the run script, typically using
 `srun`. 
 
-### Key Slurm Resource Parameters
+#### Key Slurm Resource Parameters
 
-The most relevant Slurm parameters for OpenMP experiments are:
+We begin first with one of the most relevant Slurm parameters:
 
 ```
 --ntasks
 ```
 
-Number of parallel processes launched by Slurm.
+This is the number of parallel processes (you can think of this as MPI ranks)
+launched by Slurm.
 
 For pure OpenMP runs:
 
@@ -486,14 +487,13 @@ For MPI runs:
 
 each task corresponds to an MPI rank.
 
-
-For OpenMP runs: 
+For OpenMP runs, the parameter
 
 ```
 --cpus-per-task
 ```
 
-which indicates the number threads assigned to each task (i.e., MPI rank).
+indicates the number threads assigned to each task (i.e., MPI rank).
 
 For OpenMP programs this should match the number of threads:
 
@@ -505,15 +505,17 @@ OMP_NUM_THREADS=4
 This ensures Slurm reserves enough CPUs for the OpenMP runtime. The wrapper
 scripts that we provide ensure that this is the case.
 
-`srun` launches the program inside the allocated resources.
+`srun` launches the program inside the allocated resources. The wrapper scripts
+that we provide set the appropriate resources based on the environment variables
+`LOGICAL_CPUS_PER_NODE` and `OMP_NUM_THREADS` that the user sets.
 
-
-### What OpenMP Does
+#### What OpenMP Does
 
 OpenMP provides shared-memory parallelism inside a single process.
 
 When the program starts, the OpenMP runtime reads the environment variable (
-and [more](https://www.openmp.org/spec-html/5.0/openmpch6.html)):
+see [all OMP environment
+variables](https://www.openmp.org/spec-html/5.0/openmpch6.html) for more info):
 
 ```
 OMP_NUM_THREADS
@@ -529,12 +531,12 @@ OMP_NUM_THREADS=2
 OMP_NUM_THREADS=4
 ```
 
-OpenMP itself does not allocate hardware resources. It only creates threads
+OpenMP itself does *not allocate hardware resources*. It only creates threads
 within the resources provided by the operating system and scheduler.
 
-### MPI Considerations
+#### MPI Considerations
 
-Although the sample script currently runs OpenMP-only experiments, MPI
+The sample script currently runs OpenMP-only experiments, so MPI
 experiments would require additional control parameters. At the moment,
 `--ntasks` is computed in the following way (see
 `scripts/templates/miniweather.run.template`):
@@ -554,14 +556,16 @@ process to have.
 This approach is taken since it is the actual approach of a production HPC
 codebase such as ICON.
 
-In summary, 
+#### Summary
 
 * To achieve shared memory parallelization, set `OMP_NUM_THREADS` and do not
-change `LOGICAL_CPUS_PER_NODE`
+change `LOGICAL_CPUS_PER_NODE`.
 * To achieve distributed memory parallelization (in our examples, we do only
-"on-node" distributed memory parallelization, so we don't take advantage of 
+single-node distributed memory parallelization, so we don't take advantage of 
 the full capabilities of MPI), set `LOGICAL_CPUS_PER_NODE` since it will
-directly map to the number of MPI processes.
+directly map to the number of MPI processes. That is, if
+`LOGICAL_CPUS_PER_NODE=4` and `OMP_NUM_THREADS=1`, then 4 MPI processes are
+available during the simulation.
 * To achieve hybrid parallelization, you must set both `LOGICAL_CPUS_PER_NODE`
 and `OMP_NUM_THREADS`; however, consider that the number of MPI processes
 will be computed based on those two numbers.

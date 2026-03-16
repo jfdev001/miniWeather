@@ -583,6 +583,14 @@ source .venv/bin/activate # activate the virtual environment
 pip install -r requirements.txt
 ```
 
+After performing the above steps once, upon logging out of Levante and logging
+back in, you will only have to do the following:
+
+```shell
+module load python3
+source .venv/bin/activate 
+```
+
 This will also depend heavily on the types of experiments that you wish to run,
 however, an example python code that can be launched by:
 

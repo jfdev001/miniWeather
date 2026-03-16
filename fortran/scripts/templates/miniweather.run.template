@@ -54,16 +54,16 @@ Environment variables:
 
 Examples:
     # Several examples that WILL NOT run the miniweather simulation
-    bash $0 test serial_test --no-run                                           # serial
-    OMP_NUM_THREADS=4 bash $0 test openmp_test --no-run                         # openmp only
-    LOGICAL_CPUS_PER_NODE=16 bash $0 test mpi_test --no-run                     # mpi only
-    LOGICAL_CPUS_PER_NODE=128 OMP_NUM_THREADS=4 bash $0 test mpi_test --no-run  # hybrid parallel
+    bash $0 test serial_test --no-run                                              # serial
+    OMP_NUM_THREADS=4 bash $0 test openmp_test --no-run                            # openmp only
+    LOGICAL_CPUS_PER_NODE=16 bash $0 test mpi_test --no-run                        # mpi only
+    LOGICAL_CPUS_PER_NODE=128 OMP_NUM_THREADS=4 bash $0 test openmp_test --no-run  # hybrid parallel
 
     # Several examples that WILL run the miniweather simulation
-    sbatch $0 test serial_test --run                                           # serial
-    OMP_NUM_THREADS=4 sbatch $0 test openmp_test --run                         # openmp only
-    LOGICAL_CPUS_PER_NODE=16 sbatch $0 test mpi_test --run                     # mpi only
-    LOGICAL_CPUS_PER_NODE=128 OMP_NUM_THREADS=4 sbatch $0 test mpi_test --run  # hybrid parallel
+    sbatch $0 test serial_test --run                                              # serial
+    OMP_NUM_THREADS=4 sbatch $0 test openmp_test --run                            # openmp only
+    LOGICAL_CPUS_PER_NODE=16 sbatch $0 test mpi_test --run                        # mpi only
+    LOGICAL_CPUS_PER_NODE=128 OMP_NUM_THREADS=4 sbatch $0 test openmp_test --run  # hybrid parallel
 
 Notes:
     On Levante, Slurm sees that we have a maximum of 256 logical CPUs per

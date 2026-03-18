@@ -534,6 +534,16 @@ OMP_NUM_THREADS=4
 OpenMP itself does *not allocate hardware resources*. It only creates threads
 within the resources provided by the operating system and scheduler.
 
+We set also `OMP_DYNAMIC=false` so that the number of threads spawned by each
+parallel region is equal to the `OMP_NUM_THREADS`. By default,
+`OMP_DYNAMIC=true`, so during runtime the operating system may dynamically
+adjust the number of threads in each parallel region. For benchmarking, this is
+not ideal. It's worth noting that dynamic thread allocation adjustment is
+different depending on the compiler. For open source compilers like `clang` and
+`gcc`, the implementation is transparent, see
+[clang:openmp#L8161](https://github.com/llvm/llvm-project/blob/ee0ac7443e4dc48f0ab2371dd5cbdcca32732e48/openmp/runtime/src/kmp_runtime.cpp#L8161)
+[gcc:libgomp#L180](https://github.com/gcc-mirror/gcc/blob/7d70ce4e9a0244a2585a4bf1a9205bfb0443cc2e/libgomp/config/linux/proc.c#L180).
+
 #### MPI Considerations
 
 The sample script currently runs OpenMP-only experiments, so MPI experiments

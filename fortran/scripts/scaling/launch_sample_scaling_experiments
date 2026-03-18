@@ -131,6 +131,7 @@ echo
 # run experiemnts with different number of threads
 # NOTE: you could change these to reflect the number of threads or number
 # of logical cpus and/or mpi procs you wish to experiment with
+export OMP_DYNAMIC=false
 nthreads=(1 2 4)
 subdir_ix=4
 miniweather_executable="openmp"

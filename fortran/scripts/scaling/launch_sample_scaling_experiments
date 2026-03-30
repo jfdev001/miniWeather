@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-# NOTE: The student could modify this script for their own experiments... mpi,
+# NOTE: You could modify this script for your own experiments... mpi,
 # openacc, hybrid openmp/mpi...
 set -eu
 fortran_project_dir="$(dirname $(dirname $(dirname $(realpath ${BASH_SOURCE[0]}))))"
@@ -9,7 +9,7 @@ Usage:
     $0 [-h] RUN_SCRIPT [--run|--no-run]
 
 Script to demonstrate scaling properties by compiling different versions 
-miniweather and then launching these different versions with different 
+of miniWeather and then launching these different versions with different 
 OMP_NUM_THREADS.
 
 Required arguments:
@@ -27,12 +27,12 @@ Examples:
 Details:
     The script does two things --
 
-    [1] Builds and compiles four different versions of miniweather. Each
+    [1] Builds and compiles four different versions of miniWeather. Each
     version has a different grid resolution since we want to see how problem
     size affects performance. The grid resolutions are (nx=128, nz=128),
     (nx=128, nz=256), (nx=256, nz=128), and (nx=256, nz=256).
 
-    [2] Launchs Slurm jobs for each of these grid resolutions and for each 
+    [2] Launches Slurm jobs for each of these grid resolutions and for each 
     of 1, 2, and 4 threads. This way you end up with experiments that look like
     (nx=128, nz=128, nthreads=1); (nx=128, nz=128, nthreads=2); so on and so
     forth.
@@ -125,10 +125,10 @@ do
 done 
 wait 
 echo 
-echo "[SUCCESS] All miniweather parameter sets compiled."
+echo "[SUCCESS] All miniWeather parameter sets compiled."
 echo 
 
-# run experiemnts with different number of threads
+# run experiments with different numbers of threads
 # NOTE: you could change these to reflect the number of threads or number
 # of logical cpus and/or mpi procs you wish to experiment with
 export OMP_DYNAMIC=false
@@ -161,7 +161,7 @@ do
             OMP_NUM_THREADS=${nthread} bash "${run_script_path}" "${subdir}" "${miniweather_executable}" --no-run
         else
             # NOTE: --chdir is important here because simulation outputs are written
-            # to where the directory that Slurm changes to
+            # to the directory that Slurm changes to
             OMP_NUM_THREADS=${nthread} sbatch --chdir "${nthread_experiments_dir}" "${run_script_path}" "${subdir}" "${miniweather_executable}" --run
             echo "[NOTE] Check ${nthread_experiments_dir} for simulation outputs"
             echo

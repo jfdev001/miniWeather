@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Plot sample scaling results from OpenMP miniweather simulations.
+"""Plot sample scaling results from OpenMP miniWeather simulations.
 
 Requires that `scripts/scaling/launch_sample_scaling_experiments` has
 been executed with the `--run` flag.
@@ -106,7 +106,7 @@ def main():
     # -- plot performance --
     # NOTE: you could adapt this to plot efficiency or other things
     fig, axs = plt.subplots(figsize=(10, 8), nrows=2)
-    fig.suptitle("Miniweather OpenMP Performance Results")
+    fig.suptitle("MiniWeather OpenMP Performance Results")
 
     # ----- Plot CPU Time scaling -----
     for exp in experiments:

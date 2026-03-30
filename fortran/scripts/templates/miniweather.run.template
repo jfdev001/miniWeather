@@ -25,7 +25,7 @@ Usage:
     sbatch $0 $args 
         Submit as a Slurm batch job.
 
-Script for running miniweather simulations.
+Script for running miniWeather simulations.
 
 You should execute this script with bash and the --no-run flag first to verify
 that the process and thread layout is what you expect. Then, if it is what you
@@ -33,15 +33,16 @@ expect, you can execute this script with sbatch and the --run flag. See
 Examples section of this doc.
 
 Required arguments:
-    BUILD_OUTPUT_SUBDIR     Name of subdirectory created inside build_output/
-    MINIWEATHER_EXECUTABLE  The name of a miniweather executable (e.g., serial).
+    BUILD_OUTPUT_SUBDIR     Name of subdirectory created in build_output/
+                            that contains miniWeather executables.
+    MINIWEATHER_EXECUTABLE  The name of a miniWeather executable (e.g., serial).
 
 Optional arguments:
     -h
     --help    Print a usage message and exit 
 
     --run
-    --no-run  Flag to run miniweather (default: ${default_run_flag})
+    --no-run  Flag to run miniWeather (default: ${default_run_flag})
 
 Environment variables:
     LOGICAL_CPUS_PER_NODE  The number of logical CPUs to allocate on each node 
@@ -53,13 +54,13 @@ Environment variables:
                            (default: ${OMP_NUM_THREADS}).
 
 Examples:
-    # Several examples that WILL NOT run the miniweather simulation
+    # Several examples that WILL NOT run the miniWeather simulation
     bash $0 test serial_test --no-run                                              # serial
     OMP_NUM_THREADS=4 bash $0 test openmp_test --no-run                            # openmp only
     LOGICAL_CPUS_PER_NODE=16 bash $0 test mpi_test --no-run                        # mpi only
     LOGICAL_CPUS_PER_NODE=128 OMP_NUM_THREADS=4 bash $0 test openmp_test --no-run  # hybrid parallel
 
-    # Several examples that WILL run the miniweather simulation
+    # Several examples that WILL run the miniWeather simulation
     sbatch $0 test serial_test --run                                              # serial
     OMP_NUM_THREADS=4 sbatch $0 test openmp_test --run                            # openmp only
     LOGICAL_CPUS_PER_NODE=16 sbatch $0 test mpi_test --run                        # mpi only
@@ -72,7 +73,7 @@ Notes:
     allocate is the product of the arguments to --ntasks and --cpus-per-task
     passed to the srun command, which is what this script wraps. The argument
     to --ntasks is the number of processes you wish to start. You can think of
-    a process as an MPI rank in the miniweather code. The argument to
+    a process as an MPI rank in the miniWeather code. The argument to
     --cpus-per-task is the number of threads you would like each process to
     have. 
 
@@ -137,7 +138,7 @@ fi
 # compute number of mpi processes available based on the number of threads
 mpi_procs_pernode=$(( LOGICAL_CPUS_PER_NODE * 1 / OMP_NUM_THREADS ))
 
-# guard against case where LOGICAL_CPUS_PER_NODE=1 but OMP_NUM_THREADS > 1
+# guard against case where LOGICAL_CPUS_PER_NODE < OMP_NUM_THREADS
 if [[ ${mpi_procs_pernode} -eq 0 ]]
 then
     mpi_procs_pernode=1
@@ -146,7 +147,7 @@ fi
 no_of_nodes=${SLURM_JOB_NUM_NODES:=1}         # default to single node job
 mpi_total_procs=$(( no_of_nodes * mpi_procs_pernode ))
 
-# setup path to miniweather executable
+# setup path to miniWeather executable
 fortran_project_dir="FORTRAN_PROJECT_DIR"
 build_dir="${fortran_project_dir}/build"
 build_output_dir="${build_dir}/build_output/${build_output_subdir_basename}"
@@ -154,14 +155,14 @@ miniweather_executable_path="${build_output_dir}/${miniweather_executable}"
 
 if [[ ! -f "${miniweather_executable_path}" ]]
 then
-    echo "[ERROR] The specified miniweather executable does not exist"
+    echo "[ERROR] The specified miniWeather executable does not exist"
     echo "  You provided ${miniweather_executable}"
     echo "  and there is no executable in the build_output_dir with that name."
     echo "  Double check the executables in ${build_output_dir}"
     exit 1 
 fi
 
-# run miniweather 
+# run miniWeather 
 if [[ "${run_flag}" == $default_run_flag ]]
 then
     echo "[WARNING] Not running batch job. Inspect output below to verify you understand the intended requested resources."

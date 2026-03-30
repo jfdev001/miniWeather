@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 #
-# @brief Configures and builds miniweather on Levante
+# @brief Configures and builds miniWeather on Levante
 #
 set -eu  # `man set` then search set \[ and look at options
 
@@ -14,7 +14,7 @@ usage=$(cat << EOF
 Usage: $0 NX NZ SIM_TIME OUT_FREQ BUILD_OUTPUT_SUBDIR 
         [DATA_SPEC] [BUILD_TESTING] [DELETE_BUILD_OUTPUT]
 
-Configure and build miniweather via CMake.
+Configure and build miniWeather via CMake.
 
 Required arguments:
     NX                   Number of grid points in x-direction
@@ -188,4 +188,4 @@ cmake \
 # build executables
 cmake --build "${build_output_dir}"
 
-echo "[SUCCESS] miniweather compiled to ${build_output_dir}"
+echo "[SUCCESS] miniWeather compiled to ${build_output_dir}"

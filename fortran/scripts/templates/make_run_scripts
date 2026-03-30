@@ -6,7 +6,7 @@ default_partition="compute"
 usage=$(cat << EOF
 Usage: $0 [-h] EMAIL [PARTITION] [ACCOUNT]
 
-Generates user-specific run scripts for miniweather based on existing templates.
+Generates user-specific run scripts for miniWeather based on existing templates.
 
 Required arguments:
     EMAIL    The email address to which Slurm status messages are sent.

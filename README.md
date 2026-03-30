@@ -1,8 +1,8 @@
-# The MiniWeather App
+# The miniWeather App
 
-It is a miniature fluid-dynamics code solving the 2-D inviscid Euler equations for stratified fluids. The dynamics themselves are dry compressible, stratified, non-hydrostatic flows dominated by buoyant forces that are relatively small perturbations on a hydrostatic background state. The code uses periodic boundary conditions in the x-direction and solid wall boundary conditions in the z-direction. The MiniWeather App is designed for training in parallel HPC computing. Parallelization approaches currently include:
+It is a miniature fluid-dynamics code solving the 2-D inviscid Euler equations for stratified fluids. The dynamics themselves are dry compressible, stratified, non-hydrostatic flows dominated by buoyant forces that are relatively small perturbations on a hydrostatic background state. The code uses periodic boundary conditions in the x-direction and solid wall boundary conditions in the z-direction. The miniWeather App is designed for training in parallel HPC computing. Parallelization approaches currently include:
 
-* MPI (C, Fortran, and C++)
+* MPI (C, C++, and Fortran)
 * OpenMP Threading (C and Fortran)
 * OpenACC Offload (C and Fortran)
 
@@ -12,20 +12,46 @@ https://mrnorman.github.io
 Author for DKRZ Levante: Jared Frazier, Leibniz Institute of Atmospheric
 Physics, https://jfdev001.github.io/
 
+# Table of Contents
+
+- [Introduction](#introduction)
+  * [Fluid State Variables](#fluid-state-variables)
+  * [Numerical Experiments](#numerical-experiments)
+    * **[Rising Thermal](#rising-thermal)**
+    * **[Colliding Thermals](#colliding-thermals)**
+    * **[Mountain Gravity Waves](#mountain-gravity-waves)**
+    * **[Density Current](#density-current)**
+    * **[Injection](#injection)**
+- [Compiling and Running the Code](#compiling-and-running-the-code)
+  * [Software Dependencies](#software-dependencies)
+  * [Basic Setup](#basic-setup)
+  * [Building the Code and Testing the Workflow](#building-the-code-and-testing-the-workflow)
+  * [Altering the Code's Configurations](#altering-the-codes-configurations)
+  * [Running the Code](#running-the-code)
+  * [Viewing the Output](#viewing-the-output)
+- [Parallelization](#parallelization)
+  * [Indexing](#indexing)
+  * [MPI Domain Decomposition](#mpi-domain-decomposition)
+  * [miniWeather Model Scaling](#miniweather-model-scaling)
+    * **[Details to Consider](#details-to-consider)**
+    * **[Running Performance Experiments](#running-performance-experiments)**
+    * **[Visualizing Performance Results](#visualizing-performance-results)**
+
+
 # Introduction
-There are four main directories in MiniWeather: (1) a Fortran source directory; (2) a C source directory; (3) a C++ source directory; and (4) a documentation directory. We focus on MPI and Open MP in Fortran code, but you can find information on C and C++ and on OpenACC here: https://github.com/mrnorman/miniWeather
+There are four main directories in miniWeather: (1) a Fortran source directory; (2) a C source directory; (3) a C++ source directory; and (4) a documentation directory. We focus on MPI and Open MP in Fortran code, but you can find information on C and C++, and on OpenACC here: https://github.com/mrnorman/miniWeather
 
 ## Fluid State Variables
 
-There are four main arrays used in this code: `state`, `state_tmp`, `flux`, and `tend`, and the dimensions for each are given in the code upon declaration in the comments. Each of these arrays is described briefly below:
+There are four main arrays used in this code: `state`, `state_tmp`, `flux`, and `tend`. Each of these arrays is described briefly below:
 
 * `state`: This is the fluid state at the current time step, and it is the only array that persists from one time step to the next. The other four are only used within the calculations to advance the model to the next time step. The fluid state describes the average state over each cell area in the spatial domain. This variable contains four fluid states, which are the traditional mass, momenta, and thermodynamic quantities of most fluid models:
   1. Density (`ID_DENS`): The 2-D density of the fluid, <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\rho" title="\large \rho" />, in <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\text{kg}\&space;\text{m}^{-2}" title="\large \text{kg}\ \text{m}^{-2}" /> (note this is normally <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\text{kg}\&space;\text{m}^{-3}" title="\large \text{kg}\ \text{m}^{-3}" />, but this is a 2-D model, not 3-D)
   2. U-momentum (`ID_UMOM`): The momentum per unit area of the fluid in the x-direction calculated as <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\rho&space;u" title="\large \rho u" />, where u is the x-direction wind velocity. The units are <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\text{kg}\&space;\text{m}^{-1}\&space;\text{s}^{-1}" title="\large \text{kg}\ \text{m}^{-1}\ \text{s}^{-1}" />. Note that to get true momentum, you must integrate over the cell.
-  2. W-momentum (`ID_WMOM`): The momentum per unit area of the fluid in the z-direction calculated as <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\rho&space;w" title="\large \rho w" />, where w is the z-direction wind velocity. The units are <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\text{kg}\&space;\text{m}^{-1}\&space;\text{s}^{-1}" title="\large \text{kg}\ \text{m}^{-1}\ \text{s}^{-1}" />. Note that to get true momentum, you must integrate over the cell.
-  4. Potential Temperature (`ID_RHOT`): The product of density and potential temperature, <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\rho&space;\theta" title="\large \rho \theta" />, where <img src="https://latex.codecogs.com/svg.latex?\theta=T\left(P_{0}/P\right)^{R_{d}/c_{p}}" /> , <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;P_{0}=10^{5}\,\text{Pa}" title="\large P_{0}=10^{5}\,\text{Pa}" />, T is the true temperature, and <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;R_d" title="\large R_d" /> and<img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;c_p" title="\large c_p" /> are the dry air constant and specific heat at constant pressure for dry air, respectively. The units of this quantity are <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\text{K}\,\text{kg}\,\text{m}^{-2}" title="\large \text{K}\,\text{kg}\,\text{m}^{-2}" />.
+  3. W-momentum (`ID_WMOM`): The momentum per unit area of the fluid in the z-direction calculated as <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\rho&space;w" title="\large \rho w" />, where w is the z-direction wind velocity. The units are <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\text{kg}\&space;\text{m}^{-1}\&space;\text{s}^{-1}" title="\large \text{kg}\ \text{m}^{-1}\ \text{s}^{-1}" />. Note that to get true momentum, you must integrate over the cell.
+  4. Potential Temperature (`ID_RHOT`): The product of density and potential temperature, <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\rho&space;\theta" title="\large \rho \theta" />, where <img src="https://latex.codecogs.com/svg.latex?\theta=T\left(P_{0}/P\right)^{R_{d}/c_{p}}" /> , <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;P_{0}=10^{5}\,\text{Pa}" title="\large P_{0}=10^{5}\,\text{Pa}" />, T is the true temperature, and <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;R_d" title="\large R_d" /> and <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;c_p" title="\large c_p" /> are the dry air constant and specific heat at constant pressure for dry air, respectively. The units of this quantity are <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\text{K}\,\text{kg}\,\text{m}^{-2}" title="\large \text{K}\,\text{kg}\,\text{m}^{-2}" />.
 * `state_tmp`: This is a temporary copy of the fluid state used in the Runge-Kutta integration to keep from overwriting the state at the beginning of the time step, and it has the same units and meaning.
-* `flux`: This is fluid state at cell boundaries in the x- and z-directions, and the units and meanings are the same as for `state` and `state_tmp`. In the x-direction update, the values of `flux` at indices `i` and `i+1` represents the fluid state at the left- and right-hand boundaries of cell `i`. The indexing is analogous in the z-direction. The fluxes are used to exchange fluid properties with neighboring cells.
+* `flux`: This is the fluid state at cell boundaries in the x- and z-directions, and the units and meanings are the same as for `state` and `state_tmp`. In the x-direction update, the values of `flux` at indices `i` and `i+1` represent the fluid state at the left- and right-hand boundaries of cell `i`, respectively. The indexing is analogous in the z-direction. The fluxes are used to exchange fluid properties with neighboring cells.
 * `tend`: This is the time tendency of the fluid state <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\partial\mathbf{q}/\partial&space;t" title="\large \partial\mathbf{q}/\partial t" />, where <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\mathbf{q}" title="\large \mathbf{q}" /> is the the state vector, and as the name suggests, it has the same meaning and units as state, except per unit time (appending <img src="https://latex.codecogs.com/svg.latex?\inline&space;\dpi{300}&space;\large&space;\text{s}^{-1}" title="\large \text{s}^{-1}" /> to the units). In the Finite-Volume method, the time tendency of a cell is equivalent to the divergence of the flux across a cell.
 
 ## Numerical Experiments
@@ -77,7 +103,7 @@ data_spec_int = DATA_SPEC_MOUNTAIN
 sim_time = 1500
 ```
 
-This test cases passes a horizontal wind over a faked mountain at the model bottom in a stable atmosphere to generate a train of stationary gravity waves across the model domain.
+This test case passes a horizontal wind over a faked mountain at the model bottom in a stable atmosphere to generate a train of stationary gravity waves across the model domain.
 
 Potential Temperature after 400 seconds:
 
@@ -94,7 +120,7 @@ data_spec_int = DATA_SPEC_DENSITY_CURRENT
 sim_time = 600
 ```
 
-This test case creates a neutrally stratified atmosphere with a strong cold bubble in the middle of the domain that crashes into the ground to give the feel of a weather front (more of a downburst, I suppose).
+This test case creates a neutrally stratified atmosphere with a strong cold bubble in the middle of the domain that crashes into the ground to give the feel of a downburst.
 
 Potential Temperature after 200 seconds:
 
@@ -137,66 +163,39 @@ Potential Temperature after 1,000 seconds:
 * CMake: https://cmake.org
 
 ## Basic Setup
-
-```shell
-cd /work/bm1233/${USER}  
-git clone git@github.com:jfdev001/miniWeather.git
-MINIWEATHER_DIR=$(pwd)/miniWeather
-cd ${MINIWEATHER_DIR}
-git submodule update --init --recursive
-```
-
-To find that repository on GitHub, go to  
-
 ```text
 https://github.com/jfdev001/miniWeather
 ```
-
-and star it so that you can easily find it later.
-
-If you prefer, you can fork (see [github docs: fork a
+Create your own fork (see [github docs: fork a
 repo](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo))
-that repo and then clone your own fork of `miniweather`. This is also a good
-approach since then you can upload (i.e., `git push`) your code to a repository
-on your GitHub. The workflow would look something like the following
+of that repo and then clone your own fork of `miniweather`. With this approach you can upload (i.e., `git push`) your code to your GitHub repository.
 
+On Levante:
 ```shell
 cd /work/bm1233/${USER}  
-# assuming you have forked miniweather
 git clone git@github.com:YOUR_GITHUB_USER_NAME_HERE/miniWeather.git 
 MINIWEATHER_DIR=$(pwd)/miniWeather
 cd ${MINIWEATHER_DIR}
 git submodule update --init --recursive
+```
 
-# by default, the remote origin (i.e., source of your code on GitHub
-# and its destination when pushing) is set to 
-# git@github.com:YOUR_GITHUB_USER_NAME_HERE/miniWeather.git ...
-# by adding another remote and calling it upstream, you can at any
-# time inspect or pull the code provided by jfdev001 without breaking
-# you local changes 
+The source of your code on GitHub (and its destination when pushing) is called remote origin in git terms. This is by default 
+```text
+git@github.com:YOUR_GITHUB_USER_NAME_HERE/miniWeather.git
+```
+If you need to inspect or pull code from jfdev001 you can do so without breaking your local changes by:
+
+```shell
 git remote add upstream git@github.com:jfdev001/miniWeather.git 
 git fetch upstream  # allows you to pull code from jfdev001 in the future
 ```
 
 ## Building the Code and Testing the Workflow
 
-There are four main directories in the mini app: (1) a Fortran source
-directory; (2) a C source directory; (3) a C++ source directory; and (4) a
-documentation directory. 
+`miniWeather` uses the [CMake](https://cmake.org/) build system. The build scripts in the `fortran` directory have been adapted for Levante, but those in the `c`
+and `cpp` directories have not and will *not* work on Levante. You would have to modify them if you wish to run those codes.
 
-`miniWeather` uses the [CMake](https://cmake.org/) build system. While the
-focus of this course is the code in the `fortran` directory, you may
-look at the `c` and `cpp` directories if you wish to find build scripts matching
-different HPC systems and compiler setups. Those build scripts in the `c`
-and `cpp` directories will *not* work on Levante and will have to be modified
-if you wish to run those codes.
-
-Note that you must source the cmake scripts in the `build/` directores because
-they do module loading and set a `TEST_MPI_COMMAND` environment variable
-because it will differ from machine to machine.
-
-The first thing you should do is verify that you can compile and run
-`miniweather`:
+The cmake files are located in `fortran/build/`. One of them can be executed as a simple check to see that you can compile and run `miniWeather`:
 
 ```shell
 bash ${MINIWEATHER_DIR}/fortran/build/cmake_levante_test
@@ -216,10 +215,10 @@ documentation
 ./<script_name> -h
 ```
 
-Pay close attention also to any examples section in usage documentation.
+Pay close attention also to the example section in usage documentation.
 
 If you are using MobaXTerm you should have two ssh sessions open and connected
-to Levante: (1) one just for looking at the uage documentation of scripts so
+to Levante: (1) one just for looking at the usage documentation of scripts so
 that you know what the inputs and outputs are, and (2) one for actually
 launching scripts and/or editing files. If you are Linux or Mac, you can also
 launch multiple terminals and each of them can independently ssh to Levante.
@@ -268,8 +267,7 @@ see
 bash cmake_levante_config_and_build -h
 ```
 
-This script forwards arguments to two calls to `cmake` that configure and build
-the script. The generated `cmake` configuration call might look like the below:
+This script forwards arguments to `cmake`. The generated `cmake` configuration call might look like the below:
 
 * `-DNX=400`: Uses 400 cells in the x-direction
 * `-DNZ=200`: Uses 200 cells in the z-direction
@@ -286,57 +284,30 @@ as described above.
 
 ## Running the Code
 
-It is recommended to run the `build_output/test/serial_test` code first to get
-an idea for the model outputs. Note that a file `output.nc` is always produced 
-in the directory from which you call the `miniweather` executables.
+Since you are using a compute cluster shared by many people,
+jobs should be submitted to the Slurm scheduler.
 
-As an example:
-
-```shell
-# assuming in fortran/ directory... this produces `output.nc` there
-cd ${MINIWEATHER_DIR}/fortran
-./build/build_output/test/serial_test
-```
-
-Since parameters are set in the code itself, you don't need to pass any
-parameters to the executables.
-
-This is fine for testing lightweight serial codes; however, we are interested
-in parallel codes. Since you are using a compute cluster shared by many people,
-jobs requiring more computational resources must be submitted to the Slurm
-scheduler.
-
-We provide a script that wraps the generation of a run script which you can
-use later for running simulations. You can check out the parameters for this
-script here:
-
-```shell
-bash ${MINIWEATHER_DIR}/fortran/scripts/templates/make_run_scripts -h
-```
-
-This script can be used to generate Slurm scripts specific to your user for
-running `miniweather` simulations. These scripts are, by convention, written to
-`scripts/run` and are *not* tracked by `git`. If you wish to modify the
-`.gitignore` file and remove the line containing `*.run`, `git` will track
-your generated run scripts. The run scripts will also be prefixed with the
-partition that you have requested. Different partitions on levante (e.g.,
-shared, compute, gpu) give the user differ compute resources. By default the
-compute partition is used, and this will work with MPI and OpenMP jobs.
-
-You should generate an example run script with the following:
-
+We provide a script that can be used to generate Slurm scripts specific to your user for
+running `miniWeather` simulations. 
+You can generate an example run script with the following:
 ```shell
 EMAIL_HERE="put_your_email@gmail.com"
 bash ${MINIWEATHER_DIR}/fortran/scripts/templates/make_run_scripts ${EMAIL_HERE}
 ```
+These scripts are, by convention, written to `scripts/run`.
 
-This generates `scripts/run/compute_miniweather.run`. You should inspect what
-this script does with
+(Side note: The scripts are *not* tracked by `git`. If you wish to track them you need to
+remove the line containing `*.run`, from `.gitignore`. )
+
+This generates `scripts/run/compute_miniweather.run`. 
+
+The prefix compute is for the compute partition of Levante (default). 
+
+To see what the script does:
 
 ```shell
 bash ${MINIWEATHER_DIR}/fortran/scripts/run/compute_miniweather.run -h
 ```
-
 In particular, you should run each of the `bash` examples in the usage doc to
 get an understanding of what *would* be submitted to Slurm. There are lots of
 outputs so make sure to read and understand them. When ready to submit jobs to
@@ -345,7 +316,7 @@ Slurm, look at the `sbatch` examples in the same usage doc.
 Note that the `time` sbatch directive is set to 30 seconds. This is sufficient
 for running tests, but may not be sufficient for running larger scale
 simulations. If your simulation significantly exceeds the amount of time
-allocated by the `time` directive, the simulation will timeout and you the
+allocated by the `time` directive, the simulation will timeout and the
 outputs to `output.nc` may be incomplete. Be aware that increasing the amount
 of time you would like to run your job may result in you waiting longer for
 the Slurm scheduler to actually launch your job. You should always prototype
@@ -354,23 +325,21 @@ request a very short amount of time (i.e., less than 1 minute).
 
 ## Viewing the Output
 
-The file I/O is done in the netCDF format: (https://www.unidata.ucar.edu/software/netcdf). To me, the easiest way to view the data is to use a tool called “ncview” (http://meteora.ucsd.edu/~pierce/ncview_home_page.html). To use it, you can simply type `ncview output.nc`, making sure you have X-forwarding enabled in your ssh session. Further, you can call `ncview -frames output.nc`, and it will dump out all of your frames in the native resolution you're viewing the data in, and you can render a movie with tools like `ffmpeg`. 
+The file I/O is done in the netCDF format: (https://www.unidata.ucar.edu/software/netcdf). An way to view the data is using “ncview” (http://meteora.ucsd.edu/~pierce/ncview_home_page.html). Simply type `ncview output.nc`, making sure you have X-forwarding enabled in your ssh session.
 
 # Parallelization
 
-The code is decomposed in two spatial dimensions, x and z, with `nx_glob` and `nz_glob` cells in the global domain and nx and nz cells in the local domain, using straightforward domain decomposition for MPI-level parallelization. The global domain is of size xlen and zlen meters, and hs “halo” cells are appended to both sides of each dimension.
+The code is decomposed in two spatial dimensions, x and z, with `nx_glob` and `nz_glob` cells in the global domain and `nx` and `nz` cells in the local domain, using straightforward domain decomposition for MPI-level parallelization. The global domain is of size `xlen` and `zlen` meters, and has `hs` “halo” cells appended to both sides of each dimension.
 
-This code was designed to parallelize with MPI first and then OpenMP, OpenACC, OpenMP offload, or `parallel_for` next, but you can always parallelize with OpenMP or OpenACC without MPI if you want. But it is rewarding to be able to run it on multiple nodes at higher resolution for more and sharper eddies in the dynamics.
+This code was designed to parallelize with MPI first and then OpenMP, OpenACC or other approaches next, but you can always parallelize with OpenMP or OpenACC without MPI if you want. 
 
-As you port the code, you'll want to change relatively little code at a time, re-compile, re-run, and look at the output to see that you're still getting the right answer. There are advantages to using a visual tool to check the answer (e.g., `ncview`), as it can sometimes give you clues as to why you're not getting the right answer. 
+As you port the code, you'll want to change relatively little code at a time, re-compile, re-run, and look at the output to see that you're still getting the right answer (e.g., `ncview`). 
 
-Note that you only need to make changes code within the first 450 source lines for C and Fortran, and each loop that needs threading is decorated with a `// THREAD ME` comment. Everything below that is initialization and I/O code that doesn't need to be parallelized (unless you want to) for C and Fortran directives-based approaches.
-
-For the C++ code, you will need to work with the initialization and File I/O code, but everything you need to do is explicitly guided via comments in the code.
+Each loop that needs threading is decorated with a `// THREAD ME` comment.
 
 ## Indexing
 
-The code makes room for so-called “halo” cells in the fluid state. This is a common practice in any algorithm that uses stencil-based reconstruction to estimate variation within a domain. In this code, there are `hs` halo cells on either side of each spatial dimension, and I pretty much hard-code `hs=2`.
+The code makes room for so-called “halo” cells in the fluid state. This is a common practice in any algorithm that uses stencil-based reconstruction to estimate variation within a domain. In this code, there are `hs` halo cells on either side of each spatial dimension, with `hs=2` hard-code.
 
 In the Fortran code's fluid state (`state`), the x- and z-dimensions are dimensioned as multi-dimensional arrays that range from `1-hs:nx+hs`. In the x-direction, `1-hs:0` belong to the MPI task to the left, cells `1:nx` belong to the current MPI task, and `nx+1:nx+hs` belong to the MPI task to the right. In the z-dimension, `1-hs:0` are artificially set to mimic a solid wall boundary condition at the bottom, and `nz+1:nz+hs` are the same for the top boundary. The cell-interface fluxes (`flux`) are dimensioned as `1:nx+1` and `1:nz+1` in the x- and z-directions, and the cell average tendencies (`tend`) are dimensioned `1:nx` and `1:nz` in the x- and z-directions. The cell of index `i` will have left- and right-hand interface fluxes of index `i` and `i+1`, respectively, and it will be evolved by the tendency at index `i`. The analog of this is also true in the z-direction.
 
@@ -380,7 +349,7 @@ This code was designed to use domain decomposition, where each MPI rank “owns�
 
 **IMPORTANT**: Please be sure to set `nranks`, `myrank`, `nx`, `i_beg`, `left_rank`, and `right_rank`. These are clearly marked in the serial source code. You can set more variables, but these are used elsewhere in the code (particularly in the parallel file I/O), so they must be set.
 
-To parallelize with MPI, there are only two places in the code that need to be altered. The first is the initialization, a subroutine / function named `init`, where you must determine the number of ranks, you process's rank, the beginning index of your rank's first cell in the x-direction, the number of x-direction cells your rank will own, and the MPI rank IDs that are to your left and your right. Because the code is periodic in the x-direction, your left and right neighboring ranks will wrap around. For instance, if your are rank `0`, your left-most rank will be `nranks-1`.
+To parallelize with MPI, there are only two places in the code that need to be altered. The first is the initialization, a subroutine / function named `init`, where you must determine the number of ranks, your process's rank, the beginning index of your rank's first cell in the x-direction, the number of x-direction cells your rank will own, and the MPI rank IDs that are to your left and your right. Because the code is periodic in the x-direction, your left and right neighboring ranks will wrap around. For instance, if you are rank `0`, your left-most rank will be `nranks-1`.
 
 The second place is in the routine that sets the halo values in the x-direction. In this routine, you need to:
 
@@ -397,19 +366,19 @@ The second place is in the routine that sets the halo values in the x-direction.
 Once you complete this, the code will be fully parallelized in MPI. Both of the places you need to add code for MPI are marked in the serial code, and there are some extra hints in the `set_halo_values_x()` routine as well.
 
 
-# MiniWeather Model Scaling
-## Details to Consider
+## miniWeather Model Scaling
+### Details to Consider
 
 If you want to do scaling studies with miniWeather, this section will be important to make sure you're doing an apples-to-apples comparison.
 
-* `sim_time`: The `sim_time` parameter does not mean the wall time it takes to simulate but rather refers amount of model time simulated. As you increase `sim_time`, you should expect the walltime to increase linearly.
-* `nx_glob, nz_glob`: As a rule, it's easiest if you always keep `nx_glob = nz_glob * 2` since the domain is always 20km x 10km in the x- and z-directions. As you increase `nx_glob` (and proportionally `nz_glob`) by some factor `f`, the time step automatically reduced by that same factor, `f`. Therefore, increasing `nx_glob` by 2x leads to 8x more work that needs to be done. Thus, with the same amount of parallelism, you should expect a 2x increase in `nx_glob` and `nz_glob` to increase the walltime by 8x (neglecting parallel overhead concerns).
-  * More precisely, the time step is directly proportional to the minimum grid spacing. The x- and y-direction grid spacings are: `dx=20km/nx_glob` and `dz=10km/nz_glob`. So as you decrease the minimum grid spacing (by increasing `nx_glob` and/or `nz_glob`), you proportionally decrease the size of the time step and therefore proportionally increase the number of time steps you need to complete the simulation (thus proportionally increasing the expected walltime).
-* The larger the problem size, `nx_glob` and `nz_glob`, the lower the relative parallel overheads will be. You can get to a point where there isn't enough work on the accelerator to keep it busy and / or enough local work to amortize parallel overheads. At this point, you'll need to increase the problem size to see better scaling. This is a typical [Amdahl's Law](https://en.wikipedia.org/wiki/Amdahl%27s_law) situation.
+* `sim_time`: The `sim_time` parameter does not mean the wall time it takes to simulate but rather refers to the amount of model time simulated. As you increase `sim_time`, you should expect the walltime to increase linearly.
+* `nx_glob, nz_glob`: As a rule, it's easiest if you always keep `nx_glob = nz_glob * 2` since the domain is always 20km x 10km in the x- and z-directions. As you increase `nx_glob` (and proportionally `nz_glob`) by some factor `f`, the time step is automatically reduced by that same factor, `f`. Therefore, increasing `nx_glob` by 2x leads to 8x more work that needs to be done. Thus, with the same amount of parallelism, you should expect a 2x increase in `nx_glob` and `nz_glob` to increase the walltime by 8x (neglecting parallel overhead concerns).
+  * More precisely, the time step is proportional to the minimum grid spacing. The x- and y-direction grid spacings are: `dx=20km/nx_glob` and `dz=10km/nz_glob`. So as you decrease the minimum grid spacing (by increasing `nx_glob` and/or `nz_glob`), you proportionally decrease the size of the time step and therefore proportionally increase the number of time steps you need to complete the simulation (thus proportionally increasing the expected walltime).
+* The larger the problem size, `nx_glob` and `nz_glob`, the lower the relative parallel overheads will be. You can get to a point where there isn't enough work on the accelerator to keep it busy and / or enough local work to amortize parallel overheads. At this point, you'll need to increase the problem size to see better scaling. This is a typical Amdahl's Law situation.
 
 Remember that you can control each of these parameters through the CMake configure.
 
-## Running Performance Experiments
+### Running Performance Experiments
 
 ### A Sample Script
 You may want to evaluate how the performance of `miniweather` is affected by
@@ -424,163 +393,7 @@ and launches such experiments:
 
 You can use that script as a template for running your own experiments.
 
-The next sections provides further information about launching such scripts and
-the relationship with Slurm.
-
-### Execution Environment: Slurm, OpenMP, and MPI
-
-The sample scaling script launches MiniWeather experiments on a Slurm-managed
-cluster using different OpenMP thread counts. Several components interact
-during execution:
-
-* Slurm – allocates compute resources and launches jobs.
-* OpenMP runtime – manages thread-level parallelism inside the program.
-* The run script – sets environment variables and submits jobs.
-
-Understanding which system controls which behavior is important when
-interpreting scaling results.
-
-#### What Slurm Does
-
-The command
-
-```
-sbatch <run script> [args...]
-```
-
-submits a batch job to the Slurm scheduler.
-
-Slurm is responsible for:
-
-* Selecting a compute node.
-* Allocating CPU cores and memory.
-* Launching the job in the requested directory.
-* Enforcing resource limits.
-
-The actual simulation program is started inside the run script, typically using
-`srun`. 
-
-#### Key Slurm Resource Parameters
-
-We begin first with one of the most relevant Slurm parameters:
-
-```
---ntasks
-```
-
-This is the number of parallel processes (you can think of this as MPI ranks)
-launched by Slurm.
-
-For pure OpenMP runs:
-
-```
---ntasks=1
-```
-
-because there is only one process.
-
-For MPI runs:
-
-```
---ntasks=N
-```
-
-each task corresponds to an MPI rank.
-
-For OpenMP runs, the parameter
-
-```
---cpus-per-task
-```
-
-indicates the number threads assigned to each task (i.e., MPI rank).
-
-For OpenMP programs this should match the number of threads:
-
-```
---cpus-per-task=4
-OMP_NUM_THREADS=4
-```
-
-This ensures Slurm reserves enough CPUs for the OpenMP runtime. The wrapper
-scripts that we provide ensure that this is the case.
-
-`srun` launches the program inside the allocated resources. The wrapper scripts
-that we provide set the appropriate resources based on the environment variables
-`LOGICAL_CPUS_PER_NODE` and `OMP_NUM_THREADS` that the user sets.
-
-#### What OpenMP Does
-
-OpenMP provides shared-memory parallelism inside a single process.
-
-When the program starts, the OpenMP runtime reads the environment variable (see
-[all OMP environment
-variables](https://www.openmp.org/spec-html/5.0/openmpch6.html) for more info):
-
-```
-OMP_NUM_THREADS
-```
-
-This determines how many threads are created in parallel regions.
-
-In the sample experiment the scaling script sets:
-
-```
-OMP_NUM_THREADS=1
-OMP_NUM_THREADS=2
-OMP_NUM_THREADS=4
-```
-
-OpenMP itself does *not allocate hardware resources*. It only creates threads
-within the resources provided by the operating system and scheduler.
-
-We set also `OMP_DYNAMIC=false` so that the number of threads spawned by each
-parallel region is equal to the `OMP_NUM_THREADS`. By default,
-`OMP_DYNAMIC=true`, so during runtime the operating system may dynamically
-adjust the number of threads in each parallel region. For benchmarking, this is
-not ideal. It's worth noting that dynamic thread allocation adjustment is
-different depending on the compiler. For open source compilers like `clang` and
-`gcc`, the implementation is transparent, see
-[clang:openmp#L8161](https://github.com/llvm/llvm-project/blob/ee0ac7443e4dc48f0ab2371dd5cbdcca32732e48/openmp/runtime/src/kmp_runtime.cpp#L8161)
-[gcc:libgomp#L180](https://github.com/gcc-mirror/gcc/blob/7d70ce4e9a0244a2585a4bf1a9205bfb0443cc2e/libgomp/config/linux/proc.c#L180).
-
-#### MPI Considerations
-
-The sample script currently runs OpenMP-only experiments, so MPI experiments
-would require additional control parameters. At the moment, `--ntasks` is
-computed in the following way (see
-[miniweather.run.template](https://github.com/jfdev001/miniWeather/blob/244dcd663f2496152c685dd04e85578142e05340/fortran/scripts/templates/miniweather.run.template#L137-L147)):
-
-```
-# compute number of mpi processes available based on the number of threads
-mpi_procs_pernode=$(( LOGICAL_CPUS_PER_NODE * 1 / OMP_NUM_THREADS ))
-no_of_nodes=${SLURM_JOB_NUM_NODES:=1}         # default to single node job
-mpi_total_procs=$(( no_of_nodes * mpi_procs_pernode ))
-```
-
-This means you do not directly allocate the total number of MPI processes, 
-rather it is computed by dividing the number of `LOGICAL_CPUS_PER_NODE`
-by the number of threads (i.e., `OMP_NUM_THREADS`) you would like each MPI
-process to have.
-
-This approach is taken since it is the actual approach of a production HPC
-codebase such as ICON.
-
-#### Summary
-
-* To achieve **shared memory** parallelization, set `OMP_NUM_THREADS` and do not
-change `LOGICAL_CPUS_PER_NODE`.
-* To achieve **distributed memory** parallelization (in our examples, we do only
-single-node distributed memory parallelization, so we don't take advantage of 
-the full capabilities of MPI), set `LOGICAL_CPUS_PER_NODE` since it will
-directly map to the number of MPI processes. That is, if
-`LOGICAL_CPUS_PER_NODE=4` and `OMP_NUM_THREADS=1`, then 4 MPI processes are
-available during the simulation.
-* To achieve **hybrid** parallelization, you must set both `LOGICAL_CPUS_PER_NODE`
-and `OMP_NUM_THREADS`; however, consider that the number of MPI processes
-will be computed based on those two numbers.
-
-## Visualizing Performance Results
+### Visualizing Performance Results
 
 If you have not setup your Python environment, do the following:
 
@@ -593,30 +406,13 @@ source .venv/bin/activate # activate the virtual environment
 pip install -r requirements.txt
 ```
 
-After performing the above steps once, upon logging out of Levante and logging
-back in, you will only have to do the following:
-
-```shell
-module load python3
-source .venv/bin/activate 
-```
-
-Visualizing performance results will depend heavily on the types of experiments
-that you wish to run, however, an example python code that can be launched by:
+There is an example python code that can be launched by:
 
 ```shell
 # assuming in the fortran/ directory
 python scripts/viz/sample_scaling_results.py
 ```
-
-That script has no `-h` option supported; however, at the top of the file
-is a small description of the contents of the script itself and what it's for.
-
-You copy/modify it to accomplish your plotting goals for your experiments.
-
-Below is an example output from the script:
-
-<img width="999" height="799" alt="miniweather_openmp" src="https://github.com/user-attachments/assets/5f2959bf-393a-4ae2-8008-67383dffcc01" />
-
+Its usefulness depends heavily on the types of experiments that you wish to run. That script has no `-h` option supported; however, at the top of the file
+is a small description of the contents of the script itself and what it's for. You can modify it to accomplish your plotting goals for your experiments.
 
 

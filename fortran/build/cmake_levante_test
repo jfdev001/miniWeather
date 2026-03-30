@@ -4,7 +4,7 @@ usage=$(cat << EOF
 Usage: $0 [-h]
 
 Configures, builds, and runs tests for miniWeather on Levante. Use as a 
-sanity check to make sure miniweather actually works.
+sanity check to make sure miniWeather actually works.
 EOF
 )
 
@@ -20,7 +20,7 @@ build_dir="${fortran_project_root}/build"
 subdir="test"
 build_output_dir="${build_dir}/build_output/${subdir}"
 
-# configure and build miniweather 
+# configure and build miniWeather 
 config_and_build="${build_dir}/cmake_levante_config_and_build"
 bash "${config_and_build}" 200 100 1000 2000 "${subdir}" DATA_SPEC_THERMAL ON ON
 

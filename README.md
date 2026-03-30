@@ -380,6 +380,7 @@ Remember that you can control each of these parameters through the CMake configu
 
 ### Running Performance Experiments
 
+### A Sample Script
 You may want to evaluate how the performance of `miniweather` is affected by
 increasing the number of threads, increasing the number of MPI processes, or
 doing a combination of both. You can inspect a sample bash script that prepares

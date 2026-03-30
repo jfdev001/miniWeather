@@ -33,7 +33,8 @@ expect, you can execute this script with sbatch and the --run flag. See
 Examples section of this doc.
 
 Required arguments:
-    BUILD_OUTPUT_SUBDIR     The path of the executables
+    BUILD_OUTPUT_SUBDIR     Name of subdirectory created in build_output/
+                            that contains miniWeather executables.
     MINIWEATHER_EXECUTABLE  The name of a miniWeather executable (e.g., serial).
 
 Optional arguments:
